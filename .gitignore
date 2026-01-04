@@ -25,7 +25,7 @@ venv/
 ENV/
 env/
 .venv
-my_venv*/
+# my_venv_3_12/ - REMOVED to track large dependencies (torch, xgboost, etc.)
 
 # IDE
 .vscode/
