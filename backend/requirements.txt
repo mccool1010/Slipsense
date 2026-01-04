@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+rio-tiler
+rasterio
+Pillow
+python-dotenv

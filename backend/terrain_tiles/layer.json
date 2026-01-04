@@ -1,0 +1,20 @@
+{
+  "tilejson": "2.1.0",
+  "format": "heightmap-1.0",
+  "name": "DEM Terrain",
+  "description": "Heightmap terrain tiles from DEM_filled_75.tif",
+  "version": "1.0.0",
+  "attribution": "Generated from DEM data",
+  "scheme": "xyz",
+  "tiles": [
+    "{z}/{x}/{y}.png"
+  ],
+  "minzoom": 0,
+  "maxzoom": 4,
+  "bounds": [
+    -180,
+    -85.051129,
+    180,
+    85.051129
+  ]
+}
