@@ -48,6 +48,7 @@ const MapView = ({
   layerOpacity,
   onMapClick,
   sidebarOpen,
+  selectedDistrict = "all",
 }) => {
   const TILE_SERVER = "http://localhost:8000";
   const [hoverInfo, setHoverInfo] = useState(null);
@@ -70,13 +71,19 @@ const MapView = ({
         console.error("Failed to load runout GeoJSON:", error);
       }
     };
-    
+
     loadRunoutGeoJSON();
   }, []);
+
+  // Construct historical susceptibility URL with district filter
+  const historicalUrl = selectedDistrict === "all"
+    ? `${TILE_SERVER}/tiles/historical_susceptibility/{z}/{x}/{y}.png`
+    : `${TILE_SERVER}/tiles/historical_susceptibility/{z}/{x}/{y}.png?district=${selectedDistrict}`;
 
   const rasterLayers = {
     susceptibilityML: `${TILE_SERVER}/tiles/susceptibility_ml/{z}/{x}/{y}.png`,
     susceptibilityDL: `${TILE_SERVER}/tiles/susceptibility_dl/{z}/{x}/{y}.png`,
+    historicalSusceptibility: historicalUrl,
     hazardFused: `${TILE_SERVER}/tiles/hazard_fused/{z}/{x}/{y}.png`,
     transit: `${TILE_SERVER}/tiles/transit/{z}/{x}/{y}.png`,
     deposition: `${TILE_SERVER}/tiles/deposition/{z}/{x}/{y}.png`,
@@ -114,7 +121,7 @@ const MapView = ({
   // Keep Leaflet map size valid when the layout changes (sidebar toggle / window resize)
   React.useEffect(() => {
     if (!map) return;
-    const t = setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 300);
+    const t = setTimeout(() => { try { map.invalidateSize(); } catch (e) { } }, 300);
     return () => clearTimeout(t);
   }, [map, sidebarOpen]);
 
@@ -123,7 +130,7 @@ const MapView = ({
     const handleResize = () => {
       clearTimeout(resizeTimeoutRef.current);
       resizeTimeoutRef.current = setTimeout(() => {
-        try { map.invalidateSize(); } catch (e) {}
+        try { map.invalidateSize(); } catch (e) { }
       }, 150);
     };
     window.addEventListener("resize", handleResize);
@@ -131,7 +138,7 @@ const MapView = ({
   }, [map]);
 
   return (
-    <div 
+    <div
       ref={mapContainerRef}
       style={{ height: "100%", width: "100%", position: "relative" }}
       onMouseMove={handleMapMouseMove}
@@ -169,6 +176,13 @@ const MapView = ({
         {activeLayers.susceptibilityDL && (
           <TileLayer url={rasterLayers.susceptibilityDL} opacity={layerOpacity.susceptibilityDL} />
         )}
+        {activeLayers.historicalSusceptibility && (
+          <TileLayer
+            key={`historical-${selectedDistrict}`}
+            url={rasterLayers.historicalSusceptibility}
+            opacity={layerOpacity.historicalSusceptibility}
+          />
+        )}
         {activeLayers.hazardFused && (
           <TileLayer url={rasterLayers.hazardFused} opacity={layerOpacity.hazardFused} />
         )}
@@ -192,28 +206,28 @@ const MapView = ({
               }}
               onEachFeature={(feature, layer) => {
                 console.log("Runout path feature loaded:", feature);
-              layer.on({
-                click: () => {
-                  onMapClick({
-                    type: "runout",
-                    message: "Runout path shows the predicted downhill movement of landslide material based on terrain slope and flow direction.",
-                  });
-                },
-                mouseover: () => {
-                  layer.setStyle({
-                    color: "#ff0000",
-                    weight: 4,
-                  });
-                  layer.bringToFront();
-                },
-                mouseout: () => {
-                  layer.setStyle({
-                    color: "#00ffff",
-                    weight: 2,
-                  });
-                },
-              });
-            }}
+                layer.on({
+                  click: () => {
+                    onMapClick({
+                      type: "runout",
+                      message: "Runout path shows the predicted downhill movement of landslide material based on terrain slope and flow direction.",
+                    });
+                  },
+                  mouseover: () => {
+                    layer.setStyle({
+                      color: "#ff0000",
+                      weight: 4,
+                    });
+                    layer.bringToFront();
+                  },
+                  mouseout: () => {
+                    layer.setStyle({
+                      color: "#00ffff",
+                      weight: 2,
+                    });
+                  },
+                });
+              }}
             />
           </>
         )}
@@ -225,7 +239,7 @@ const MapView = ({
         <MapHoverHandler onHover={handleHover} />
       </MapContainer>
 
-      
+
 
       {/* Hover tooltip - follows mouse */}
       <AnimatePresence>

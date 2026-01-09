@@ -2,18 +2,36 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiMap } from "react-icons/fi";
 
-const controlVariants = {
-  hidden: { opacity: 0, y: -6 },
-  visible: { opacity: 1, y: 0 },
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -12 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { type: "spring", stiffness: 300, damping: 24 }
+  },
 };
 
 const LayerRow = ({ children }) => (
-  <div className="flex items-center justify-between gap-3 py-2">
+  <motion.div
+    className="flex items-center justify-between gap-3 py-2"
+    variants={itemVariants}
+  >
     {children}
-  </div>
+  </motion.div>
 );
 
-const LayerControl = ({ activeLayers, layerOpacity, onToggle, onOpacityChange }) => {
+const LayerControl = ({ activeLayers, layerOpacity, onToggle, onOpacityChange, selectedDistrict, onDistrictChange }) => {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -27,7 +45,7 @@ const LayerControl = ({ activeLayers, layerOpacity, onToggle, onOpacityChange })
       </div>
 
       <AnimatePresence>
-        <motion.div variants={controlVariants} initial="hidden" animate="visible" exit="hidden">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" exit="hidden">
           <LayerRow>
             <label className="flex items-center gap-3 cursor-pointer">
               <input
@@ -73,6 +91,56 @@ const LayerControl = ({ activeLayers, layerOpacity, onToggle, onOpacityChange })
               />
             )}
           </LayerRow>
+
+          <LayerRow>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                className="form-checkbox"
+                type="checkbox"
+                checked={activeLayers.historicalSusceptibility}
+                onChange={() => onToggle("historicalSusceptibility")}
+              />
+              <span className="text-sm">Historical Susceptibility (GSI)</span>
+            </label>
+            {activeLayers.historicalSusceptibility && (
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={layerOpacity.historicalSusceptibility}
+                onChange={(e) => onOpacityChange("historicalSusceptibility", parseFloat(e.target.value))}
+                className="w-28"
+              />
+            )}
+          </LayerRow>
+
+          {/* District dropdown for historical layer */}
+          {activeLayers.historicalSusceptibility && (
+            <div className="pl-6 pb-2">
+              <select
+                className="district-select w-full p-1 text-sm rounded border border-gray-600 bg-gray-800 text-white"
+                value={selectedDistrict || "all"}
+                onChange={(e) => onDistrictChange && onDistrictChange(e.target.value)}
+              >
+                <option value="all">All Districts</option>
+                <option value="thiruvananthapuram">Thiruvananthapuram</option>
+                <option value="kollam">Kollam</option>
+                <option value="pathanamthitta">Pathanamthitta</option>
+                <option value="alappuzha">Alappuzha</option>
+                <option value="kottayam">Kottayam</option>
+                <option value="idukki">Idukki</option>
+                <option value="ernakulam">Ernakulam</option>
+                <option value="thrissur">Thrissur</option>
+                <option value="palakkad">Palakkad</option>
+                <option value="malappuram">Malappuram</option>
+                <option value="kozhikode">Kozhikode</option>
+                <option value="wayanad">Wayanad</option>
+                <option value="kannur">Kannur</option>
+                <option value="kasaragod">Kasaragod</option>
+              </select>
+            </div>
+          )}
 
           <LayerRow>
             <label className="flex items-center gap-3 cursor-pointer">

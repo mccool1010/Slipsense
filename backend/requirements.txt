@@ -4,3 +4,6 @@ rio-tiler
 rasterio
 Pillow
 python-dotenv
+shapely
+twilio
+requests

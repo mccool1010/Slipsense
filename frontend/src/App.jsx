@@ -1,15 +1,31 @@
 /* App.jsx — SlipSense (Refactored Step 1) */
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import "./App.css";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import MapView from "./components/MapView";
 import LayerControl from "./components/LayerControl";
 import Legend from "./components/Legend";
 import CesiumView from "./components/CesiumView";
 import Navbar from "./components/Navbar";
+import { ToastProvider, useToast } from "./components/Toast";
+import Particles from "./components/Particles";
 
-function App() {
+// Layer display names for toast messages
+const layerNames = {
+  susceptibilityML: "ML Susceptibility",
+  susceptibilityDL: "DL Susceptibility",
+  hazardFused: "Final Hazard Map",
+  runout: "Runout Paths",
+  transit: "Transit Zone",
+  deposition: "Deposition Zone",
+  historicalSusceptibility: "GSI Historical",
+  streets: "Street Map",
+};
+
+function AppContent() {
+  const toast = useToast();
+
   /* ---------------- GLOBAL STATE ---------------- */
 
   // Which layers are visible
@@ -20,6 +36,8 @@ function App() {
     runout: true,
     transit: false,
     deposition: false,
+    // Historical susceptibility (GSI/KSDMA)
+    historicalSusceptibility: false,
     // Streets/OpenStreetMap overlay
     streets: false,
   });
@@ -32,6 +50,7 @@ function App() {
     transit: 0.7,
     deposition: 0.7,
     runout: 1.0,
+    historicalSusceptibility: 0.7,
     streets: 1.0,
   });
 
@@ -47,14 +66,27 @@ function App() {
   // Sidebar toggle state
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // Selected district for historical susceptibility layer
+  const [selectedDistrict, setSelectedDistrict] = useState("all");
+
   /* ---------------- HANDLERS ---------------- */
 
-  const toggleLayer = (layerName) => {
-    setActiveLayers((prev) => ({
-      ...prev,
-      [layerName]: !prev[layerName],
-    }));
-  };
+  const toggleLayer = useCallback((layerName) => {
+    setActiveLayers((prev) => {
+      const newState = !prev[layerName];
+      // Show toast notification
+      const displayName = layerNames[layerName] || layerName;
+      if (newState) {
+        toast.success(`${displayName} enabled`);
+      } else {
+        toast.info(`${displayName} disabled`);
+      }
+      return {
+        ...prev,
+        [layerName]: newState,
+      };
+    });
+  }, [toast]);
 
   const changeOpacity = (layer, value) => {
     setLayerOpacity((prev) => ({
@@ -70,6 +102,7 @@ function App() {
         type: "runout",
         message: message,
       });
+      toast.info("Runout path selected");
       return;
     }
     // Otherwise, try to fetch pixel data from backend (may fail outside raster coverage)
@@ -78,6 +111,8 @@ function App() {
       lon: lon,
       zone: "Unknown",
       susceptibility: null,
+      historicalSusceptibility: null,
+      historicalRiskClass: null,
       rainfall: 0,
       riskLevel: null,
     };
@@ -91,9 +126,12 @@ function App() {
           lon: data.lon ?? data.longitude ?? lon,
           zone: data.zone ?? data.zone_name ?? "Unknown",
           susceptibility: data.susceptibility ?? data.sus ?? null,
+          historicalSusceptibility: data.historical_susceptibility ?? null,
+          historicalRiskClass: data.historical_risk_class ?? null,
           rainfall: data.rainfall ?? data.rain ?? 0,
           riskLevel: data.riskLevel ?? data.risk_level ?? data.risk ?? null,
         };
+        toast.success("Location data loaded");
       } else {
         console.debug("pixel-info returned non-ok status", res.status);
       }
@@ -127,6 +165,7 @@ function App() {
 
   const open3DView = () => {
     setShow3D(true);
+    toast.info("Loading 3D terrain view...");
   };
 
   const close3DView = () => {
@@ -153,48 +192,70 @@ function App() {
           transition={{ duration: 0.3, ease: "easeInOut" }}
           pointerEvents={sidebarOpen ? "auto" : "none"}
         >
+          {/* Floating particles in sidebar */}
+          <Particles count={6} />
+
           <LayerControl
             activeLayers={activeLayers}
             layerOpacity={layerOpacity}
             onToggle={toggleLayer}
             onOpacityChange={changeOpacity}
+            selectedDistrict={selectedDistrict}
+            onDistrictChange={setSelectedDistrict}
           />
           <div className="mt-4">
             <Legend />
           </div>
 
-          {selectedPoint?.type === "runout" && (
-            <div className="info-box">
-              <h3>Runout Path</h3>
-              <p>
-                This line represents the <b>predicted flow direction</b> of a landslide.
-              </p>
-              <p>
-                It is calculated using the <b>D8 flow direction algorithm</b>, which
-                follows the steepest downhill slope from a failure zone.
-              </p>
-              <p>
-                Areas intersecting this path are at risk of being impacted even if they
-                are not initiation zones.
-              </p>
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {selectedPoint?.type === "runout" && (
+              <motion.div
+                className="info-box"
+                key="runout-info"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <h3>Runout Path</h3>
+                <p>
+                  This line represents the <b>predicted flow direction</b> of a landslide.
+                </p>
+                <p>
+                  It is calculated using the <b>D8 flow direction algorithm</b>, which
+                  follows the steepest downhill slope from a failure zone.
+                </p>
+                <p>
+                  Areas intersecting this path are at risk of being impacted even if they
+                  are not initiation zones.
+                </p>
+              </motion.div>
+            )}
 
-          {selectedPoint && selectedPoint.type !== "runout" && (
-            <div className="info-box">
-              <h3>Selected Location</h3>
-              <p><b>Latitude:</b> {selectedPoint.lat}</p>
-              <p><b>Longitude:</b> {selectedPoint.lon}</p>
-              <p><b>Zone:</b> {selectedPoint.zone}</p>
-              <p><b>Susceptibility:</b> {selectedPoint.susceptibility}</p>
-              <p><b>Rainfall:</b> {selectedPoint.rainfall} mm/hr</p>
-              <p><b>Overall Risk:</b> {selectedPoint.riskLevel}</p>
+            {selectedPoint && selectedPoint.type !== "runout" && (
+              <motion.div
+                className="info-box"
+                key="location-info"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <h3>Selected Location</h3>
+                <p><b>Latitude:</b> {selectedPoint.lat}</p>
+                <p><b>Longitude:</b> {selectedPoint.lon}</p>
+                <p><b>Zone:</b> {selectedPoint.zone}</p>
+                <p><b>DL Susceptibility:</b> {selectedPoint.susceptibility}</p>
+                {selectedPoint.historicalRiskClass && (
+                  <p><b>GSI Historical:</b> {selectedPoint.historicalRiskClass}</p>
+                )}
+                <p><b>Rainfall:</b> {selectedPoint.rainfall} mm/hr</p>
+                <p><b>Overall Risk:</b> {selectedPoint.riskLevel}</p>
 
-              <button onClick={open3DView}>
-                View 3D Terrain
-              </button>
-            </div>
-          )}
+                <button onClick={open3DView}>
+                  View 3D Terrain
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.aside>
 
         {/* Map */}
@@ -204,20 +265,33 @@ function App() {
             layerOpacity={layerOpacity}
             onMapClick={handleMapClick}
             sidebarOpen={sidebarOpen}
+            selectedDistrict={selectedDistrict}
           />
         </main>
       </div>
 
       {/* 3D Modal */}
-      {show3D && selectedPoint && (
-        <CesiumView
-          lat={Number(selectedPoint.lat)}
-          lon={Number(selectedPoint.lon)}
-          onClose={close3DView}
-        />
-      )}
+      <AnimatePresence>
+        {show3D && selectedPoint && (
+          <CesiumView
+            lat={Number(selectedPoint.lat)}
+            lon={Number(selectedPoint.lon)}
+            onClose={close3DView}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
+// Wrap with ToastProvider
+function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
+  );
+}
+
 export default App;
+

@@ -13,13 +13,209 @@
   --text-primary: #ffffff;
   --text-secondary: #cbd5e1;
   --border: #334155;
+
+  /* Animation timing tokens - consistent throughout */
+  --transition-fast: 150ms;
+  --transition-base: 250ms;
+  --transition-slow: 400ms;
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Subtle glow pulse for interactive elements */
+@keyframes subtleGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+  }
+}
+
+/* Smooth gradient shift for navbar */
+@keyframes gradientShift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Checkbox check animation */
+@keyframes checkPop {
+  0% {
+    transform: scale(0);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Slider thumb pulse */
+@keyframes thumbPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Fade slide for layer items */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Shimmer loading effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Click ripple effect */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Toast slide in/out */
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Icon wiggle animation */
+@keyframes iconWiggle {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(-5deg);
+  }
+
+  75% {
+    transform: rotate(5deg);
+  }
+}
+
+/* Icon pulse scale */
+@keyframes iconPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+/* Floating particle animation */
+@keyframes floatParticle {
+
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.3;
+  }
+
+  25% {
+    transform: translateY(-15px) translateX(5px);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: translateY(-25px) translateX(-3px);
+    opacity: 0.4;
+  }
+
+  75% {
+    transform: translateY(-10px) translateX(8px);
+    opacity: 0.5;
+  }
+}
+
+/* Loading bar animation */
+@keyframes loadingProgress {
+  0% {
+    width: 0%;
+  }
+
+  50% {
+    width: 70%;
+  }
+
+  100% {
+    width: 100%;
+  }
 }
 
 * {
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
@@ -51,7 +247,7 @@ html, body, #root {
 }
 
 /* Content area fills remaining space */
-.slipsense-app > .content-wrapper {
+.slipsense-app>.content-wrapper {
   flex: 1;
   position: relative;
   overflow: hidden;
@@ -91,7 +287,9 @@ html, body, #root {
 ================================ */
 .navbar {
   grid-area: navbar;
-  background: linear-gradient(135deg, var(--bg-light) 0%, #1a2942 100%);
+  background: linear-gradient(135deg, var(--bg-light) 0%, #1a2942 50%, var(--bg-light) 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -120,8 +318,15 @@ html, body, #root {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-4px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 .navbar-title {
@@ -152,23 +357,40 @@ html, body, #root {
   color: var(--primary);
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 200ms ease;
+  transition: all var(--transition-base) var(--ease-smooth);
   font-size: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar-toggle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(139, 92, 246, 0.3), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--transition-base) var(--ease-smooth);
 }
 
 .navbar-toggle:hover {
   background: var(--primary);
   color: var(--text-primary);
   transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+}
+
+.navbar-toggle:hover::before {
+  opacity: 1;
 }
 
 .navbar-toggle:active {
   transform: scale(0.95);
+  transition: transform var(--transition-fast) var(--ease-smooth);
 }
 
 /* ===============================
@@ -181,13 +403,22 @@ html, body, #root {
   padding: 8px 16px;
   background: rgba(6, 182, 212, 0.1);
   border: 1px solid rgba(6, 182, 212, 0.3);
-  border-radius: 8px;
+  border-radius: 10px;
   margin-left: 16px;
+  transition: all var(--transition-base) var(--ease-smooth);
+  cursor: default;
+}
+
+.weather-widget:hover {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.2);
 }
 
 .weather-icon {
   font-size: 28px;
   color: var(--secondary);
+  animation: float 3s ease-in-out infinite;
 }
 
 .weather-info {
@@ -250,11 +481,36 @@ html, body, #root {
 ================================ */
 .layer-control {
   margin-bottom: 20px;
-  padding: 16px;
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
+  padding: 18px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.4));
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
+  transition: all var(--transition-base) var(--ease-smooth);
+  animation: subtleBorderPulse 4s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle border pulse animation */
+@keyframes subtleBorderPulse {
+
+  0%,
+  100% {
+    border-color: rgba(139, 92, 246, 0.2);
+    box-shadow: 0 0 0 rgba(139, 92, 246, 0);
+  }
+
+  50% {
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.1);
+  }
+}
+
+.layer-control:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.15);
+  animation-play-state: paused;
 }
 
 .layer-control h3 {
@@ -274,37 +530,42 @@ html, body, #root {
   margin: 8px 0;
   cursor: pointer;
   user-select: none;
-  transition: all 150ms ease;
-  padding: 6px 8px;
-  border-radius: 6px;
+  transition: all var(--transition-base) var(--ease-smooth);
+  padding: 8px 10px;
+  border-radius: 8px;
+  position: relative;
 }
 
 .layer-control label:hover {
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(139, 92, 246, 0.12);
+  transform: translateX(4px);
 }
 
 .layer-control input[type="checkbox"] {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border: 2px solid var(--primary);
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: all var(--transition-base) var(--ease-bounce);
   flex-shrink: 0;
   background: transparent;
+  position: relative;
 }
 
 .layer-control input[type="checkbox"]:hover {
   border-color: var(--secondary);
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+  transform: scale(1.05);
 }
 
 .layer-control input[type="checkbox"]:checked {
   background: var(--primary);
   border-color: var(--primary);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.5);
+  animation: checkPop var(--transition-base) var(--ease-bounce);
 }
 
 .layer-control input[type="checkbox"]::after {
@@ -313,14 +574,18 @@ html, body, #root {
   color: white;
   font-size: 12px;
   font-weight: bold;
-  left: 3px;
-  top: -2px;
-  display: none;
+  left: 4px;
+  top: 0px;
+  opacity: 0;
+  transform: scale(0);
+  transition: all var(--transition-fast) var(--ease-bounce);
 }
 
 .layer-control input[type="checkbox"]:checked::after {
-  display: block;
+  opacity: 1;
+  transform: scale(1);
 }
+
 .layer-control .layer-label-text {
   font-size: 13px;
   color: var(--text-secondary);
@@ -334,59 +599,93 @@ html, body, #root {
 
 .opacity-slider {
   width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(to right, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.4));
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(to right, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.35));
   outline: none;
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
-  margin: 6px 0 8px 0;
+  margin: 8px 0 10px 0;
+  transition: background var(--transition-base) var(--ease-smooth);
+}
+
+.opacity-slider:hover {
+  background: linear-gradient(to right, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0.5));
 }
 
 .opacity-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
-  transition: all 150ms ease;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-base) var(--ease-bounce);
 }
 
 .opacity-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.7);
+  transform: scale(1.25);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.7), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.opacity-slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
 }
 
 .opacity-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   border: none;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
-  transition: all 150ms ease;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-base) var(--ease-bounce);
 }
 
 .opacity-slider::-moz-range-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.7);
+  transform: scale(1.25);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.7), 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* ===============================
    Legend
 ================================ */
 .legend {
-  padding: 16px;
-  background: rgba(6, 182, 212, 0.05);
-  border: 1px solid rgba(6, 182, 212, 0.2);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
+  padding: 18px;
+  background: linear-gradient(145deg, rgba(6, 182, 212, 0.08), rgba(15, 23, 42, 0.4));
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
   margin-bottom: 20px;
+  transition: all var(--transition-base) var(--ease-smooth);
+  animation: legendBorderPulse 4s ease-in-out infinite;
+  animation-delay: 2s;
+  /* Offset from layer-control for visual interest */
+}
+
+/* Legend border pulse - cyan themed */
+@keyframes legendBorderPulse {
+
+  0%,
+  100% {
+    border-color: rgba(6, 182, 212, 0.2);
+    box-shadow: 0 0 0 rgba(6, 182, 212, 0);
+  }
+
+  50% {
+    border-color: rgba(6, 182, 212, 0.4);
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.1);
+  }
+}
+
+.legend:hover {
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 4px 20px rgba(6, 182, 212, 0.15);
+  animation-play-state: paused;
 }
 
 .legend h3 {
@@ -401,45 +700,137 @@ html, body, #root {
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 6px 0;
+  gap: 10px;
+  margin: 8px 0;
   font-size: 12px;
   color: var(--text-secondary);
-  transition: color 150ms ease;
+  transition: all var(--transition-base) var(--ease-smooth);
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: default;
 }
 
 .legend-item:hover {
   color: var(--text-primary);
+  background: rgba(6, 182, 212, 0.08);
+  transform: translateX(4px);
 }
 
 .legend-color {
-  min-width: 12px;
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  min-width: 14px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: all var(--transition-base) var(--ease-bounce);
 }
-.legend-color.failure { background: #dc2626; }
-.legend-color.transit { background: #f59e0b; }
-.legend-color.deposition { background: #fde047; }
+
+.legend-item:hover .legend-color {
+  transform: scale(1.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.legend-color.failure {
+  background: #dc2626;
+}
+
+.legend-color.transit {
+  background: #f59e0b;
+}
+
+.legend-color.deposition {
+  background: #fde047;
+}
+
+.legend-gradient {
+  background: linear-gradient(90deg, #22c55e, #eab308, #dc2626);
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: all var(--transition-base) var(--ease-bounce);
+}
+
+.legend-item:hover .legend-gradient {
+  transform: scaleX(1.02);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* ===============================
+   District Dropdown
+================================ */
+.district-select {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition-base) var(--ease-smooth);
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b5cf6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
+
+.district-select:hover {
+  border-color: var(--primary);
+  background-color: rgba(30, 41, 59, 0.95);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+}
+
+.district-select:focus {
+  border-color: var(--secondary);
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.25);
+}
+
+.district-select option {
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  padding: 8px;
+}
 
 /* ===============================
    Info Box (Click Result)
 ================================ */
 .info-box {
   margin: 20px 0 0 0;
-  padding: 16px;
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid var(--primary);
-  border-radius: 12px;
-  animation: slideUp 300ms ease;
+  padding: 18px;
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.1), rgba(6, 182, 212, 0.06));
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 14px;
+  animation: slideUp var(--transition-slow) var(--ease-out), infoBorderPulse 4s ease-in-out infinite 0.4s;
+  transition: all var(--transition-base) var(--ease-smooth);
+}
+
+/* Info box border pulse - purple/cyan blend */
+@keyframes infoBorderPulse {
+
+  0%,
+  100% {
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 0 rgba(139, 92, 246, 0);
+  }
+
+  50% {
+    border-color: rgba(6, 182, 212, 0.4);
+    box-shadow: 0 0 14px rgba(139, 92, 246, 0.12);
+  }
+}
+
+.info-box:hover {
+  border-color: var(--secondary);
+  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.2);
+  animation-play-state: paused;
 }
 
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -447,39 +838,62 @@ html, body, #root {
 }
 
 .info-box h3 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
+  margin: 0 0 12px 0;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .info-box p {
-  margin: 4px 0;
+  margin: 5px 0;
   font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.6;
+  transition: color var(--transition-fast) var(--ease-smooth);
+}
+
+.info-box p:hover {
+  color: var(--text-primary);
 }
 
 .info-box button {
-  margin-top: 12px;
-  padding: 8px 16px;
+  margin-top: 14px;
+  padding: 10px 20px;
   background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background-size: 200% 200%;
   color: var(--text-primary);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  font-size: 12px;
-  transition: all 200ms ease;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all var(--transition-base) var(--ease-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.info-box button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transform: translateX(-100%);
+  transition: transform var(--transition-slow) var(--ease-smooth);
 }
 
 .info-box button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(139, 92, 246, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(139, 92, 246, 0.35);
+  background-position: 100% 50%;
+}
+
+.info-box button:hover::before {
+  transform: translateX(100%);
 }
 
 .info-box button:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
+  transition: transform var(--transition-fast) var(--ease-smooth);
 }
 
 /* ===============================
@@ -502,21 +916,34 @@ html, body, #root {
    Hover Tooltip
 ================================ */
 .map-hover-tooltip {
-  background: rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(10px);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
   color: var(--text-primary);
-  padding: 10px 14px;
+  padding: 12px 16px;
   font-size: 11px;
-  border-radius: 8px;
+  border-radius: 10px;
   pointer-events: none;
   z-index: 9999;
-  line-height: 1.6;
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  line-height: 1.7;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 20px rgba(139, 92, 246, 0.1);
+  animation: tooltipFade var(--transition-fast) var(--ease-out);
+}
+
+@keyframes tooltipFade {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .map-hover-tooltip div {
-  margin: 3px 0;
+  margin: 4px 0;
 }
 
 .map-hover-tooltip b {
@@ -533,28 +960,58 @@ html, body, #root {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 200ms ease;
+  animation: modalBackdropIn var(--transition-base) var(--ease-out);
+}
+
+@keyframes modalBackdropIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+
+  to {
+    opacity: 1;
+    backdrop-filter: blur(6px);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .modal {
-  background: var(--bg-light);
-  padding: 24px;
-  border-radius: 12px;
+  background: linear-gradient(135deg, var(--bg-light), var(--bg-dark));
+  padding: 28px;
+  border-radius: 16px;
   border: 1px solid var(--border);
   width: 500px;
   max-width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6), 0 0 30px rgba(139, 92, 246, 0.1);
+  animation: modalSlideIn var(--transition-slow) var(--ease-bounce);
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* ===============================
@@ -577,25 +1034,46 @@ html, body, #root {
 
 .close-btn {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 20px;
+  right: 20px;
   z-index: 2100;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(15, 23, 42, 0.7);
   color: var(--text-primary);
   border: 1px solid var(--border);
-  padding: 10px 16px;
+  padding: 12px 20px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
-  transition: all 200ms ease;
-  backdrop-filter: blur(10px);
+  transition: all var(--transition-base) var(--ease-smooth);
+  backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+}
+
+.close-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(239, 68, 68, 0.2), transparent);
+  opacity: 0;
+  transition: opacity var(--transition-base) var(--ease-smooth);
 }
 
 .close-btn:hover {
   background: var(--danger);
   border-color: var(--danger);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
+}
+
+.close-btn:hover::before {
+  opacity: 1;
+}
+
+.close-btn:active {
+  transform: translateY(-1px);
+  transition: transform var(--transition-fast) var(--ease-smooth);
 }
 
 /* ===============================
@@ -672,4 +1150,292 @@ html, body, #root {
   .layer-control {
     padding: 12px;
   }
+}
+
+/* ===============================
+   Toast Notifications
+================================ */
+.toast-container {
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(139, 92, 246, 0.15);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  animation: toastSlideIn var(--transition-slow) var(--ease-out);
+  pointer-events: auto;
+  max-width: 320px;
+}
+
+.toast.exiting {
+  animation: toastSlideOut var(--transition-base) var(--ease-smooth) forwards;
+}
+
+.toast-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.toast.success {
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(34, 197, 94, 0.2);
+}
+
+.toast.success .toast-icon {
+  color: var(--success);
+}
+
+.toast.info {
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(6, 182, 212, 0.2);
+}
+
+.toast.info .toast-icon {
+  color: var(--secondary);
+}
+
+.toast.warning {
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+.toast.warning .toast-icon {
+  color: #f59e0b;
+}
+
+/* ===============================
+   Loading Shimmer Skeleton
+================================ */
+.shimmer {
+  background: linear-gradient(90deg,
+      rgba(30, 41, 59, 0.4) 0%,
+      rgba(139, 92, 246, 0.15) 50%,
+      rgba(30, 41, 59, 0.4) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 8px;
+}
+
+.shimmer-text {
+  height: 14px;
+  width: 80%;
+  margin: 8px 0;
+}
+
+.shimmer-title {
+  height: 20px;
+  width: 60%;
+  margin-bottom: 12px;
+}
+
+.shimmer-box {
+  height: 100px;
+  width: 100%;
+  margin: 8px 0;
+}
+
+/* ===============================
+   Click Ripple Effect
+================================ */
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(6, 182, 212, 0.2) 50%, transparent 70%);
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  animation: ripple 0.6s var(--ease-out) forwards;
+}
+
+/* Map-specific ripple */
+.map-ripple {
+  position: fixed;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, rgba(6, 182, 212, 0.3) 40%, transparent 70%);
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+  animation: ripple 0.8s var(--ease-out) forwards;
+  z-index: 1000;
+}
+
+/* ===============================
+   Floating Particles Background
+================================ */
+.particles-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.6), transparent);
+  border-radius: 50%;
+  animation: floatParticle 8s ease-in-out infinite;
+}
+
+.particle:nth-child(1) {
+  left: 10%;
+  top: 20%;
+  animation-delay: 0s;
+  width: 3px;
+  height: 3px;
+}
+
+.particle:nth-child(2) {
+  left: 25%;
+  top: 60%;
+  animation-delay: 1s;
+  width: 5px;
+  height: 5px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.5), transparent);
+}
+
+.particle:nth-child(3) {
+  left: 50%;
+  top: 30%;
+  animation-delay: 2s;
+  width: 4px;
+  height: 4px;
+}
+
+.particle:nth-child(4) {
+  left: 70%;
+  top: 70%;
+  animation-delay: 3s;
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.4), transparent);
+}
+
+.particle:nth-child(5) {
+  left: 85%;
+  top: 40%;
+  animation-delay: 4s;
+  width: 6px;
+  height: 6px;
+}
+
+.particle:nth-child(6) {
+  left: 40%;
+  top: 80%;
+  animation-delay: 5s;
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.5), transparent);
+}
+
+/* ===============================
+   Icon Micro-Animations
+================================ */
+.icon-animated {
+  transition: all var(--transition-base) var(--ease-smooth);
+}
+
+.icon-animated:hover {
+  animation: iconWiggle 0.5s var(--ease-bounce);
+}
+
+.icon-pulse:hover {
+  animation: iconPulse 0.5s var(--ease-bounce);
+}
+
+.navbar-icon {
+  transition: all var(--transition-base) var(--ease-smooth);
+}
+
+.navbar-brand:hover .navbar-icon {
+  animation: iconWiggle 0.6s var(--ease-bounce);
+  color: var(--primary);
+}
+
+/* Layer icon hover animation */
+.layer-control h3 svg {
+  transition: all var(--transition-base) var(--ease-smooth);
+}
+
+.layer-control:hover h3 svg {
+  animation: iconPulse 0.6s var(--ease-bounce);
+  color: var(--primary);
+}
+
+/* ===============================
+   Loading Overlay
+================================ */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  animation: fadeIn var(--transition-base) var(--ease-out);
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(139, 92, 246, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-bar {
+  width: 200px;
+  height: 4px;
+  background: rgba(139, 92, 246, 0.2);
+  border-radius: 2px;
+  margin-top: 16px;
+  overflow: hidden;
+}
+
+.loading-bar-progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  border-radius: 2px;
+  animation: loadingProgress 2s ease-in-out infinite;
+}
+
+.loading-text {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
 }

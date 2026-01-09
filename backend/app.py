@@ -27,6 +27,10 @@ app.add_middleware(
 app.include_router(tiles_router)
 app.include_router(pixel_router)
 
+# Alert system router
+from alerts import router as alerts_router
+app.include_router(alerts_router)
+
 # Serve static files (rasters, GeoJSON, etc.)
 rasters_dir = Path(__file__).parent / "rasters"
 app.mount("/rasters", StaticFiles(directory=str(rasters_dir)), name="rasters")

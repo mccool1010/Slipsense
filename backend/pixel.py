@@ -15,6 +15,13 @@ ZONE_MAP = {
     3: "Failure",
 }
 
+HISTORICAL_CLASS_MAP = {
+    0: None,  # NoData - outside susceptible zone
+    2: "Low",
+    3: "Moderate",
+    4: "High",
+}
+
 OPENWEATHER_API_KEY = "f4b4c6deaacfaacd2060175e4697b694"  # Inserted user API key
 
 def rainfall_at(lat, lon):
@@ -79,6 +86,21 @@ def pixel_info(
 
         zone = ZONE_MAP.get(zone_code, "Unknown")
 
+        # --- Read Historical (GSI) susceptibility ---
+        historical_sus = None
+        historical_class = None
+        try:
+            with rasterio.open(RASTERS["historical_susceptibility"]) as src:
+                x, y = to_raster_xy(lon, lat, src)
+                row, col = src.index(x, y)
+                band = src.read(1)
+                if 0 <= row < band.shape[0] and 0 <= col < band.shape[1]:
+                    hist_val = int(band[row, col])
+                    historical_sus = hist_val if hist_val != 0 else None
+                    historical_class = HISTORICAL_CLASS_MAP.get(hist_val, None)
+        except Exception:
+            pass  # Historical layer is optional
+
         # --- Rainfall ---
         rain = rainfall_at(lat, lon)
 
@@ -96,6 +118,8 @@ def pixel_info(
             "longitude": lon,
             "zone": zone,
             "susceptibility": round(sus, 3),
+            "historical_susceptibility": historical_sus,
+            "historical_risk_class": historical_class,
             "rainfall": rain,
             "riskLevel": risk_level,
         }
