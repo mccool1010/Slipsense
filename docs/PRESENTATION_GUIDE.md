@@ -20,6 +20,134 @@
 
 ---
 
+## ✅ Modules Completed in SlipSense
+
+---
+
+### **Module 1: Data Processing & Feature Engineering**
+
+> **Purpose:** Collect, clean, and transform raw geospatial data into ML-ready features for landslide prediction.
+
+| Feature | How It Works | Why This Technology |
+|---------|--------------|---------------------|
+| **DEM Processing** | Loads 30m SRTM elevation raster and fills voids using `rasterio` | `rasterio` is the standard for reading/writing GeoTIFF files in Python; `numpy` enables fast array operations on millions of pixels |
+| **Historical Data Integration** | Parses NASA GLC CSV with 11,000+ landslide events using `pandas` | `pandas` provides powerful data filtering, merging, and coordinate extraction from tabular data |
+| **KSDMA Shapefiles** | Reads 13 district-wise vector polygons with `geopandas` | `geopandas` extends pandas for geospatial operations; `shapely` handles polygon geometry; `fiona` reads ESRI shapefiles |
+| **Feature Extraction** | Calculates slope, aspect, TWI, SPI from DEM using `scipy.ndimage` | `scipy.ndimage` provides efficient 2D convolution and gradient filters for terrain analysis; avoids slow per-pixel loops |
+| **Rasterization** | Converts vector shapefiles to raster GeoTIFFs | `rasterio.features.rasterize` burns vector polygons into raster grids for ML training |
+
+**9 Terrain Features Extracted:**
+- **Slope & Aspect** → Identifies steep, unstable terrain
+- **TWI & SPI** → Measures water accumulation and erosion potential
+- **Flow Accumulation** → Shows drainage concentration areas
+- **Relative Relief & Drainage Density** → Captures terrain ruggedness
+- **Distance to Rivers** → Proximity to erosion-prone channels
+
+---
+
+### **Module 2: Machine Learning & Deep Learning Pipeline**
+
+> **Purpose:** Train models to predict landslide susceptibility and refine predictions using deep learning.
+
+| Feature | How It Works | Why This Technology |
+|---------|--------------|---------------------|
+| **Random Forest** | Trains 500 decision trees on 9 features; outputs probability scores | `scikit-learn` is industry-standard; RF handles non-linear relationships and requires minimal hyperparameter tuning |
+| **XGBoost** | Gradient boosting with `scale_pos_weight` for class imbalance | `xgboost` outperforms RF on imbalanced data; handles missing values; ~87% accuracy |
+| **U-Net CNN** | Encoder-decoder architecture refines ML output spatially | `PyTorch` enables custom architectures; U-Net preserves spatial boundaries via skip connections |
+| **Patch Training** | Extracts 256×256 patches with 128 stride for training | `rasterio.windows` efficiently reads image tiles without loading entire raster into memory |
+| **Data Augmentation** | Flips, rotates patches during training | `albumentations` is fastest image augmentation library; prevents overfitting on small datasets |
+| **D8 Flow Direction** | Traces debris paths downhill from failure zones | Custom `numpy` implementation of D8 algorithm; fast vectorized operations |
+| **Hazard Fusion** | Combines susceptibility + runout into final hazard map | Simple `numpy` array operations; Zone 3=Failure, Zone 2=Transit, Zone 1=Deposition, Zone 0=Safe |
+
+**Why ML + DL Hybrid?**
+- **Random Forest/XGBoost** → Fast training, interpretable feature importance
+- **U-Net** → Fixes noisy pixel-level predictions, smooths boundaries
+- **D8 Algorithm** → Physics-based runout modeling complements statistical predictions
+
+---
+
+### **Module 3: Backend API & Alert System**
+
+> **Purpose:** Serve map tiles, handle queries, and send emergency SMS alerts.
+
+| Feature | How It Works | Why This Technology |
+|---------|--------------|---------------------|
+| **FastAPI Server** | Async Python web framework with auto-generated OpenAPI docs | `FastAPI` is 10x faster than Flask; native async support; automatic request validation |
+| **Tile Server** | Reads Cloud-Optimized GeoTIFFs (COG) and returns PNG tiles | `rio-tiler` with `COGReader` allows reading specific tiles without loading entire rasters; memory-efficient |
+| **Pixel Query** | Transforms lat/lon to raster coordinates using `rasterio.warp` | `rasterio.warp.transform` handles CRS conversions; accurate coordinate mapping |
+| **Weather Proxy** | Fetches rainfall data from OpenWeather API | Proxying hides API key from frontend; `urllib` is lightweight with no dependencies |
+| **Risk Calculation** | Computes `risk = susceptibility × (1 + rainfall/20)` | Rain amplifies landslide risk; formula from empirical studies |
+| **SMS Alerts** | Sends Twilio/Fast2SMS messages when thresholds exceeded | `Twilio` is reliable enterprise SMS; `Fast2SMS` is free for demos (20 SMS/day) |
+| **District Sampling** | Random points within polygons using `shapely` | Sampling avoids reading millions of pixels; `numpy.random` for uniform distribution |
+
+**API Architecture:**
+```
+Frontend → FastAPI → rio-tiler → GeoTIFF rasters
+                  → Twilio → SMS delivery
+                  → OpenWeather → Rainfall data
+```
+
+---
+
+### **Module 4: Frontend Web Application**
+
+> **Purpose:** Interactive map interface for visualizing hazard data with 2D and 3D views.
+
+| Feature | How It Works | Why This Technology |
+|---------|--------------|---------------------|
+| **React SPA** | Component-based UI with hooks for state management | `React 18` is industry-standard; `useState`/`useCallback` for efficient re-renders |
+| **Vite Bundler** | Fast development server with hot module replacement | `Vite` is 10-100x faster than Webpack; instant dev server startup |
+| **2D Maps** | Leaflet map with tile overlays from backend | `react-leaflet` wraps Leaflet.js; lightweight, mobile-friendly, OSM integration |
+| **3D Globe** | Cesium viewer with Google Photorealistic 3D Tiles | `CesiumJS` is the leading WebGL globe library; Cesium Ion provides terrain tiles |
+| **Layer Control** | Toggle switches and opacity sliders | React state drives UI; `Framer Motion` for smooth animations |
+| **Toast Notifications** | Context-based notification system | `React Context` avoids prop drilling; animations via `Framer Motion` |
+| **Weather Widget** | Displays temp, rainfall from backend API | Parsed from OpenWeather JSON response |
+
+**Why React + Leaflet + Cesium?**
+- **React** → Reusable components, declarative UI
+- **Leaflet** → Lightweight 2D maps (faster than Google Maps)
+- **Cesium** → Only option for true 3D globe with terrain draping
+
+---
+
+### **Module 5: External API Integrations**
+
+> **Purpose:** Connect to third-party services for weather data, SMS delivery, and 3D terrain.
+
+| Service | How It's Used | Why This Service |
+|---------|---------------|------------------|
+| **OpenWeather API** | Backend proxies requests, returns rainfall in mm | Free tier (1000 calls/day); reliable global coverage; JSON response |
+| **Twilio SMS** | Python SDK sends formatted SMS to +91 numbers | Enterprise-grade delivery; works internationally; message logging |
+| **Fast2SMS** | REST API for free Indian SMS (20/day) | No cost for demos/testing; simple API integration |
+| **Cesium Ion** | Hosts terrain tiles and 3D assets | Only provider of Google Photorealistic 3D Tiles; free for non-commercial use |
+| **Google 3D Tiles** | Asset 2275207 provides high-res terrain | Best available 3D terrain for India; draped raster overlays |
+
+**Integration Flow:**
+```
+User clicks map → Frontend → Backend → OpenWeather API
+                                    → Twilio/Fast2SMS (if alert)
+User toggles 3D → Frontend → Cesium Ion → Google 3D Tiles
+```
+
+---
+
+### 📈 Summary
+
+| Category | Count |
+|----------|-------|
+| **Total Modules** | **5** |
+| Python Libraries Used | 15+ |
+| JavaScript Libraries Used | 8+ |
+| External APIs | 4 |
+| React Components | 10 |
+| API Endpoints | 10 |
+| Raster Files Generated | 31 |
+| Trained Models | 3 |
+| Districts Covered | 14 (all of Kerala) |
+| Lines of Code | ~3,500+ |
+
+---
+
 ## 🎯 Slide 1: Title & Introduction
 
 ### What to Show
