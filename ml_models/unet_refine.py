@@ -32,8 +32,8 @@ print("All imports successful", flush=True)
 # -----------------------
 # Config
 # -----------------------
-RASTER_DIR = r"C:\coding\rasters"
-OUT_DIR = r"C:\coding\rasters"
+RASTER_DIR = r"C:\coding\Slipsense\backend\rasters"
+OUT_DIR = r"C:\coding\Slipsense\backend\rasters"
 SUS_TIF = os.path.join(RASTER_DIR, "susceptibility_ml.tif")
 SLOPE_TIF = os.path.join(RASTER_DIR, "slope75.tif")
 DEM_TIF = os.path.join(RASTER_DIR, "DEM_filled_75.tif")

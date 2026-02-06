@@ -38,7 +38,7 @@ OUT_DEPOSITION = os.path.join(RASTER_DIR, "deposition_mask.tif")
 OUT_FUSED = os.path.join(RASTER_DIR, "hazard_fused.tif")
 
 # thresholds & params (tune if necessary)
-THRESH_HIGH = 0.25               # susceptibility >= this => source/failure
+THRESH_HIGH = 0.70               # susceptibility >= this => source/failure (top ~25%)
 STREAM_ACC_THRESH = 5000        # flow accumulation value considered stream (tune)
 DEPOSITION_ACC_FACTOR = 2       # deposition if flow_acc > STREAM_ACC_THRESH * factor
 SLOPE_DEPOSITION_MAX = 15       # slope (degrees) threshold for deposition

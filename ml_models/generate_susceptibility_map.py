@@ -17,9 +17,10 @@ print("=== Susceptibility Map Generation Started ===", flush=True)
 # ---------------------------------------
 # 1. Paths
 # ---------------------------------------
-raster_dir = r"C:\coding\rasters"
-model_path = r"C:\coding\Slipsense\ml_models\landslide_model_xgb.pkl"
-output_tif = r"C:\coding\rasters\susceptibility_ml.tif"
+raster_dir = r"C:\coding\Slipsense\backend\rasters"
+model_path = r"C:\coding\Slipsense\ml_models\enhanced_model.pkl"
+scaler_path = r"C:\coding\Slipsense\ml_models\enhanced_scaler.pkl"
+output_tif = r"C:\coding\Slipsense\backend\rasters\susceptibility_ml.tif"
 
 # ---------------------------------------
 # 2. Raster File Mapping (IMPORTANT)
@@ -37,10 +38,12 @@ rasters = {
 }
 
 # ---------------------------------------
-# 3. Load model
+# 3. Load model and scaler
 # ---------------------------------------
 print("Loading model...")
 model = joblib.load(model_path)
+print("Loading scaler...")
+scaler = joblib.load(scaler_path)
 
 # ---------------------------------------
 # 4. Read first raster to define geometry
@@ -92,9 +95,11 @@ print("Raster stack shape:", data.shape)
 # 6. Flatten → Model prediction → Reshape back
 # ---------------------------------------
 flat = data.reshape(-1, data.shape[-1])
+print("Scaling features...")
+flat_scaled = scaler.transform(flat)
 print("Running ML inference...")
 
-pred = model.predict_proba(flat)[:, 1]   # probability of class 1 (landslide)
+pred = model.predict_proba(flat_scaled)[:, 1]   # probability of class 1 (landslide)
 pred_map = pred.reshape(height, width)
 
 # ---------------------------------------
