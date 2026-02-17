@@ -84,14 +84,9 @@ The SlipSense ML pipeline underwent significant optimization, achieving a **+42%
 | Model Version | Phase | Dataset | F1 Score | Accuracy | Precision | Recall | ROC-AUC |
 |---------------|-------|---------|----------|----------|-----------|--------|---------|
 | Logistic Regression | Baseline | 250 | 0.585 | 62.0% | 59.3% | 62.0% | 0.479 |
-| SVM RBF | Baseline | 250 | 0.570 | 60.0% | 57.0% | 60.0% | 0.467 |
 | XGBoost | Baseline | 250 | 0.564 | 58.0% | 55.9% | 58.0% | 0.552 |
 | RandomForest | Baseline | 250 | 0.548 | 56.0% | 54.2% | 56.0% | 0.498 |
-| Decision Tree | Baseline | 250 | 0.502 | 50.0% | 50.5% | 50.0% | 0.457 |
 | RandomForest | Optimized | 250 | 0.639 | 66.0% | 64.6% | 66.0% | 0.525 |
-| SVM | Optimized | 250 | 0.564 | 56.0% | 56.9% | 56.0% | 0.560 |
-| Gradient Boosting | Optimized | 250 | 0.555 | 56.0% | 55.1% | 56.0% | 0.589 |
-| Voting Ensemble | Optimized | 250 | 0.548 | 56.0% | 54.2% | 56.0% | 0.535 |
 | XGBoost | Optimized | 250 | 0.531 | 54.0% | 52.5% | 54.0% | 0.589 |
 | **Stacking Ensemble** | **Enhanced** | **800** | **0.832** | **85.6%** | **90.5%** | **77.0%** | **0.958** |
 
@@ -103,10 +98,9 @@ F1 Score Progression:
 Stacking Ensemble (RF+XGB+LGBM) ████████████████████████████████░ 0.832  ★ FINAL
 RandomForest (Optimized)        █████████████████████░░░░░░░░░░░░ 0.639
 Logistic Regression (Baseline)  ██████████████████░░░░░░░░░░░░░░░ 0.585
-SVM RBF (Baseline)              █████████████████░░░░░░░░░░░░░░░░ 0.570
 XGBoost (Baseline)              █████████████████░░░░░░░░░░░░░░░░ 0.564
 RandomForest (Baseline)         ████████████████░░░░░░░░░░░░░░░░░ 0.548
-Decision Tree (Baseline)        ███████████████░░░░░░░░░░░░░░░░░░ 0.502
+XGBoost (Optimized)             ████████████████░░░░░░░░░░░░░░░░░ 0.531
                                 |-------|-------|-------|-------|
                                 0.0     0.25    0.50    0.75    1.0
 ```
