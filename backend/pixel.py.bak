@@ -101,37 +101,11 @@ def pixel_info(
         except Exception:
             pass  # Historical layer is optional
 
-        # --- Read Soil Susceptibility (from SoilGrids clay/sand index) ---
-        soil_sus = None
-        try:
-            with rasterio.open(RASTERS["soil_susceptibility"]) as src:
-                x, y = to_raster_xy(lon, lat, src)
-                row, col = src.index(x, y)
-                band = src.read(1)
-                if 0 <= row < band.shape[0] and 0 <= col < band.shape[1]:
-                    val = float(band[row, col])
-                    if val > 0 and val != -9999:
-                        soil_sus = round(val, 3)
-        except Exception:
-            pass  # Soil layer is optional
-
         # --- Rainfall ---
         rain = rainfall_at(lat, lon)
 
-        # --- Risk calculation (blended with historical, matching raster logic) ---
-        hist_weight = 0.30
-        if historical_sus is not None and historical_sus > 0:
-            hist_map = {2: 0.25, 3: 0.55, 4: 1.0}
-            hist_val_norm = hist_map.get(historical_sus, 0.0)
-            blended_sus = sus * (1 - hist_weight) + hist_val_norm * hist_weight
-        else:
-            blended_sus = sus
-        # Factor in soil susceptibility (amplifies risk for clay-rich soils)
-        soil_factor = 1.0
-        if soil_sus is not None:
-            # Soil index 0-1: high value = clay-rich = more unstable when wet
-            soil_factor = 1.0 + (soil_sus - 0.5) * 0.3  # range: 0.85 to 1.15
-        risk_val = blended_sus * (1 + rain / 20) * soil_factor
+        # --- Risk calculation ---
+        risk_val = sus * (1 + rain / 20)
         if risk_val > 0.7:
             risk_level = "High"
         elif risk_val > 0.4:
@@ -146,7 +120,6 @@ def pixel_info(
             "susceptibility": round(sus, 3),
             "historical_susceptibility": historical_sus,
             "historical_risk_class": historical_class,
-            "soil_susceptibility": soil_sus,
             "rainfall": rain,
             "riskLevel": risk_level,
         }

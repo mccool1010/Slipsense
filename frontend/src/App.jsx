@@ -10,6 +10,7 @@ import CesiumView from "./components/CesiumView";
 import Navbar from "./components/Navbar";
 import { ToastProvider, useToast } from "./components/Toast";
 import Particles from "./components/Particles";
+import AlertPanel from "./components/AlertPanel";
 
 // Layer display names for toast messages
 const layerNames = {
@@ -113,6 +114,7 @@ function AppContent() {
       susceptibility: null,
       historicalSusceptibility: null,
       historicalRiskClass: null,
+      soilSusceptibility: null,
       rainfall: 0,
       riskLevel: null,
     };
@@ -128,6 +130,7 @@ function AppContent() {
           susceptibility: data.susceptibility ?? data.sus ?? null,
           historicalSusceptibility: data.historical_susceptibility ?? null,
           historicalRiskClass: data.historical_risk_class ?? null,
+          soilSusceptibility: data.soil_susceptibility ?? null,
           rainfall: data.rainfall ?? data.rain ?? 0,
           riskLevel: data.riskLevel ?? data.risk_level ?? data.risk ?? null,
         };
@@ -206,6 +209,7 @@ function AppContent() {
           <div className="mt-4">
             <Legend />
           </div>
+          <AlertPanel />
 
           <AnimatePresence mode="wait">
             {selectedPoint?.type === "runout" && (
@@ -246,6 +250,9 @@ function AppContent() {
                 <p><b>DL Susceptibility:</b> {selectedPoint.susceptibility}</p>
                 {selectedPoint.historicalRiskClass && (
                   <p><b>GSI Historical:</b> {selectedPoint.historicalRiskClass}</p>
+                )}
+                {selectedPoint.soilSusceptibility != null && (
+                  <p><b>Soil Risk:</b> {(selectedPoint.soilSusceptibility * 100).toFixed(1)}%</p>
                 )}
                 <p><b>Rainfall:</b> {selectedPoint.rainfall} mm/hr</p>
                 <p><b>Overall Risk:</b> {selectedPoint.riskLevel}</p>

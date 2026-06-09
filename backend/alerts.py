@@ -53,8 +53,8 @@ ZONE_FAILURE = 3
 ZONE_TRANSIT = 2
 
 # SMS Provider configuration
-# Supported: "twilio" or "fast2sms" (free for India, 20 SMS/day)
-SMS_PROVIDER = os.environ.get("SMS_PROVIDER", "fast2sms").lower()
+# Supported: "twilio", "fast2sms", or "vonage"
+SMS_PROVIDER = os.environ.get("SMS_PROVIDER", "vonage").lower()
 
 # Twilio configuration (loaded from environment)
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
@@ -64,6 +64,11 @@ TWILIO_FROM_NUMBER = os.environ.get("TWILIO_FROM_NUMBER", "")
 # Fast2SMS configuration (FREE for India - 20 SMS/day)
 # Register at: https://www.fast2sms.com/
 FAST2SMS_API_KEY = os.environ.get("FAST2SMS_API_KEY", "")
+
+# Vonage (Nexmo) configuration - FREE €2 credit, no trial prefix
+# Register at: https://dashboard.nexmo.com/sign-up
+VONAGE_API_KEY = os.environ.get("VONAGE_API_KEY", "")
+VONAGE_API_SECRET = os.environ.get("VONAGE_API_SECRET", "")
 
 # Common configuration
 ALERT_RECIPIENTS = os.environ.get("ALERT_RECIPIENTS", "").split(",")
@@ -80,6 +85,7 @@ class DistrictRiskAssessment(BaseModel):
     district: str
     avg_susceptibility: float
     max_susceptibility: float
+    avg_soil_susceptibility: Optional[float] = None
     has_failure_zone: bool
     has_transit_zone: bool
     rainfall_mm: float
@@ -194,6 +200,38 @@ def check_hazard_zones_at_points(points: List[tuple]) -> tuple:
     return has_failure, has_transit
 
 
+def get_soil_susceptibility_at_points(points: List[tuple]) -> List[float]:
+    """Read soil susceptibility index values at given lat/lon points."""
+    values = []
+    
+    try:
+        soil_path = RASTERS.get("soil_susceptibility")
+        if not soil_path or not os.path.exists(soil_path):
+            return values
+            
+        with rasterio.open(soil_path) as src:
+            for lat, lon in points:
+                try:
+                    if src.crs is not None:
+                        xs, ys = rio_transform("EPSG:4326", src.crs, [lon], [lat])
+                        x, y = xs[0], ys[0]
+                    else:
+                        x, y = lon, lat
+                    
+                    row, col = src.index(x, y)
+                    if 0 <= row < src.height and 0 <= col < src.width:
+                        band = src.read(1)
+                        val = float(band[row, col])
+                        if val > 0 and val != -9999:
+                            values.append(val)
+                except Exception:
+                    continue
+    except Exception as e:
+        logger.error(f"Error reading soil susceptibility raster: {e}")
+    
+    return values
+
+
 def get_rainfall_for_location(lat: float, lon: float) -> float:
     """Fetch rainfall data from OpenWeather API (current + forecast for 24h estimate)."""
     api_key = os.environ.get("OPENWEATHER_API_KEY", "f4b4c6deaacfaacd2060175e4697b694")
@@ -238,6 +276,7 @@ def format_sms_message(district: str, rainfall: float) -> str:
 District: {district}
 Risk Level: VERY HIGH
 Rainfall: {rainfall:.1f} mm (last 24h)
+Soil Condition: Saturated / High clay content
 
 This is an advisory alert.
 Follow local authority guidelines."""
@@ -324,10 +363,54 @@ def send_fast2sms(message: str, dry_run: bool = True) -> bool:
         return False
 
 
+def send_vonage_sms(message: str, dry_run: bool = True) -> bool:
+    """
+    Send SMS via Vonage (Nexmo) API. FREE €2 credit, no trial prefix.
+    Register at https://dashboard.nexmo.com/sign-up
+    """
+    if dry_run or not VONAGE_API_KEY or not VONAGE_API_SECRET:
+        logger.info(f"[DRY RUN - Vonage] SMS would be sent:\n{message}")
+        return True
+    
+    try:
+        url = "https://rest.nexmo.com/sms/json"
+        
+        for recipient in ALERT_RECIPIENTS:
+            num = recipient.strip().replace("+", "").replace("-", "").replace(" ", "")
+            if not num:
+                continue
+            
+            payload = {
+                "from": "SlipSense",
+                "text": message,
+                "to": num,
+                "api_key": VONAGE_API_KEY,
+                "api_secret": VONAGE_API_SECRET
+            }
+            
+            response = requests.post(url, json=payload, timeout=10)
+            result = response.json()
+            
+            messages = result.get("messages", [])
+            if messages and messages[0].get("status") == "0":
+                logger.info(f"[ALERT - Vonage] SMS sent to {recipient}")
+            else:
+                error_text = messages[0].get("error-text", "Unknown") if messages else "No response"
+                logger.error(f"Vonage error for {recipient}: {error_text}")
+                return False
+        
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send SMS via Vonage: {e}")
+        return False
+
+
 def send_sms(message: str, dry_run: bool = True) -> bool:
     """Send SMS using the configured provider."""
     if SMS_PROVIDER == "twilio":
         return send_twilio_sms(message, dry_run)
+    elif SMS_PROVIDER == "vonage":
+        return send_vonage_sms(message, dry_run)
     else:  # Default to fast2sms
         return send_fast2sms(message, dry_run)
 
@@ -367,6 +450,10 @@ def check_all_districts():
         avg_sus = sum(sus_values) / len(sus_values) if sus_values else 0.0
         max_sus = max(sus_values) if sus_values else 0.0
         
+        # Get soil susceptibility
+        soil_values = get_soil_susceptibility_at_points(points)
+        avg_soil = sum(soil_values) / len(soil_values) if soil_values else None
+        
         # Check hazard zones
         has_failure, has_transit = check_hazard_zones_at_points(points)
         
@@ -375,15 +462,24 @@ def check_all_districts():
         rainfall = get_rainfall_for_location(centroid[0], centroid[1])
         
         # Determine if alert should trigger
+        # Soil susceptibility > 0.6 means clay-rich soil prone to sliding
         sus_exceeds = avg_sus >= SUSCEPTIBILITY_THRESHOLD or max_sus >= SUSCEPTIBILITY_THRESHOLD
         rain_exceeds = rainfall >= RAINFALL_THRESHOLD_MM
         has_hazard = has_failure or has_transit
+        soil_risky = avg_soil is not None and avg_soil >= 0.6
+        
+        # Alert triggers when: high susceptibility + heavy rain + hazard zone
+        # Soil data lowers the bar: if soil is risky, rainfall threshold drops to 30mm
+        if soil_risky:
+            rain_exceeds = rainfall >= (RAINFALL_THRESHOLD_MM * 0.6)  # 30mm if soil is risky
         
         alert_triggered = sus_exceeds and rain_exceeds and has_hazard
         
-        # Determine risk level
+        # Determine risk level (soil amplifies)
         if alert_triggered:
             risk_level = "VERY HIGH"
+        elif sus_exceeds and has_hazard and soil_risky:
+            risk_level = "HIGH"
         elif sus_exceeds and has_hazard:
             risk_level = "HIGH"
         elif sus_exceeds or has_hazard:
@@ -395,6 +491,7 @@ def check_all_districts():
             district=district_name,
             avg_susceptibility=round(avg_sus, 3),
             max_susceptibility=round(max_sus, 3),
+            avg_soil_susceptibility=round(avg_soil, 3) if avg_soil is not None else None,
             has_failure_zone=has_failure,
             has_transit_zone=has_transit,
             rainfall_mm=round(rainfall, 1),
@@ -515,3 +612,241 @@ def test_alert_system():
             "rainfall_mm": RAINFALL_THRESHOLD_MM
         }
     }
+
+
+# =============================================
+# SIMULATION ENDPOINT
+# =============================================
+
+class SimulationStep(BaseModel):
+    step: int
+    title: str
+    detail: str
+    status: str  # "complete", "warning", "danger", "sent"
+
+class SimulationResult(BaseModel):
+    district: str
+    scenario: str
+    simulated_rainfall_mm: float
+    simulated_soil_saturation: float
+    actual_avg_susceptibility: float
+    actual_max_susceptibility: float
+    actual_avg_soil_susceptibility: Optional[float]
+    has_failure_zone: bool
+    has_transit_zone: bool
+    risk_level: str
+    alert_triggered: bool
+    sms_message: str
+    sms_sent: bool
+    sms_status: str
+    recipient: str
+    timestamp: str
+    steps: List[SimulationStep]
+
+
+@router.get("/simulate")
+def simulate_alert(
+    district: str = Query(default="Wayanad", description="District to simulate"),
+    rainfall_mm: float = Query(default=180.0, description="Simulated rainfall in mm"),
+    soil_saturation: float = Query(default=0.92, description="Simulated soil saturation (0-1)"),
+    recipient: str = Query(default="+919207499037", description="Phone number to send SMS to"),
+    send_sms_flag: bool = Query(default=False, description="Actually send SMS (false = preview only)")
+):
+    """
+    Run a simulated landslide alert scenario for demo purposes.
+    
+    Uses REAL susceptibility and soil data from rasters, but SIMULATES
+    extreme rainfall conditions to guarantee an alert triggers.
+    
+    Returns step-by-step animation data for the frontend AlertPanel.
+    """
+    steps = []
+    
+    # Step 1: Load district geometry
+    districts = load_districts()
+    target_feature = None
+    for feature in districts:
+        name = feature.get("properties", {}).get("DISTRICT", "")
+        if name.lower() == district.lower():
+            target_feature = feature
+            break
+    
+    if not target_feature:
+        # If district not found, use first available
+        available = [f.get("properties", {}).get("DISTRICT", "?") for f in districts[:5]]
+        raise HTTPException(
+            status_code=404, 
+            detail=f"District '{district}' not found. Available: {available}"
+        )
+    
+    geometry = target_feature.get("geometry")
+    district_name = target_feature["properties"]["DISTRICT"]
+    
+    steps.append(SimulationStep(
+        step=1, title="Scanning District",
+        detail=f"Sampling 50 points in {district_name}...",
+        status="complete"
+    ))
+    
+    # Step 2: Get REAL susceptibility from raster
+    points = sample_points_in_polygon(geometry, num_points=50)
+    sus_values = get_susceptibility_at_points(points)
+    avg_sus = sum(sus_values) / len(sus_values) if sus_values else 0.0
+    max_sus = max(sus_values) if sus_values else 0.0
+    
+    steps.append(SimulationStep(
+        step=2, title="Reading Susceptibility",
+        detail=f"Avg: {avg_sus:.3f}, Max: {max_sus:.3f}",
+        status="complete" if avg_sus < SUSCEPTIBILITY_THRESHOLD else "warning"
+    ))
+    
+    # Step 3: Get REAL soil data
+    soil_values = get_soil_susceptibility_at_points(points)
+    avg_soil = sum(soil_values) / len(soil_values) if soil_values else None
+    
+    steps.append(SimulationStep(
+        step=3, title="Soil Analysis",
+        detail=f"Avg soil susceptibility: {avg_soil:.3f} — {'Clay-rich, water-retaining' if avg_soil and avg_soil > 0.5 else 'Mixed composition'}" if avg_soil else "No soil data",
+        status="warning" if avg_soil and avg_soil > 0.5 else "complete"
+    ))
+    
+    # Step 4: Check hazard zones
+    has_failure, has_transit = check_hazard_zones_at_points(points)
+    
+    steps.append(SimulationStep(
+        step=4, title="Checking Hazard Zones",
+        detail=f"Failure zones: {'✓ Detected' if has_failure else '✗ None'} | Transit zones: {'✓ Detected' if has_transit else '✗ None'}",
+        status="warning" if has_failure else "complete"
+    ))
+    
+    # Step 5: SIMULATED rainfall (this is the trigger)
+    steps.append(SimulationStep(
+        step=5, title="⚡ Rainfall Surge (Simulated)",
+        detail=f"{rainfall_mm:.0f}mm in 24h — EXCEEDS threshold ({RAINFALL_THRESHOLD_MM:.0f}mm) by {rainfall_mm/RAINFALL_THRESHOLD_MM:.1f}×",
+        status="danger"
+    ))
+    
+    # Step 6: Soil saturation
+    steps.append(SimulationStep(
+        step=6, title="🌊 Soil Saturation (Simulated)",
+        detail=f"{soil_saturation*100:.0f}% — CRITICAL level. Soil fully saturated, slope stability compromised.",
+        status="danger"
+    ))
+    
+    # Step 7: Combined risk calculation
+    # Force the risk to be very high (this is a simulation)
+    combined_score = min(0.99, avg_sus * 1.3 + 0.2)  # Boost for demo
+    risk_level = "VERY HIGH"
+    alert_triggered = True
+    
+    steps.append(SimulationStep(
+        step=7, title="🔴 Risk Calculation",
+        detail=f"Combined score: {combined_score:.2f} — {risk_level}. Immediate alert required.",
+        status="danger"
+    ))
+    
+    # Step 8: Format SMS
+    soil_condition = "Saturated" if soil_saturation > 0.8 else "High moisture"
+    sms_message = (
+        f"[SlipSense ALERT] LANDSLIDE WARNING\n"
+        f"District: {district_name}\n"
+        f"Risk: {risk_level}\n"
+        f"Rainfall: {rainfall_mm:.0f}mm/24h\n"
+        f"Soil: {soil_condition} ({soil_saturation*100:.0f}%)\n"
+        f"Susceptibility: {max_sus:.2f}\n"
+        f"\n"
+        f"Avoid slopes, riverbanks & low-lying areas. "
+        f"Follow district authority instructions. "
+        f"Move to higher ground if in hazard zone."
+    )
+
+    # Step 9: Send SMS (or preview)
+    sms_sent = False
+    sms_status = "Preview only (send_sms=false)"
+    
+    if send_sms_flag:
+        clean_number = recipient.strip().replace("-", "").replace(" ", "")
+        # Remove + for Vonage (expects digits only)
+        vonage_number = clean_number.replace("+", "")
+        
+        if VONAGE_API_KEY and VONAGE_API_SECRET:
+            try:
+                url = "https://rest.nexmo.com/sms/json"
+                payload = {
+                    "from": "SlipSense",
+                    "text": sms_message,
+                    "to": vonage_number,
+                    "api_key": VONAGE_API_KEY,
+                    "api_secret": VONAGE_API_SECRET
+                }
+                response = requests.post(url, json=payload, timeout=10)
+                result = response.json()
+                msgs = result.get("messages", [])
+                if msgs and msgs[0].get("status") == "0":
+                    sms_sent = True
+                    sms_status = f"SMS sent to {recipient} via Vonage"
+                    logger.info(f"[SIMULATION] SMS sent to {recipient} via Vonage")
+                else:
+                    error_text = msgs[0].get("error-text", "Unknown") if msgs else "No response"
+                    sms_status = f"Vonage error: {error_text}"
+                    logger.error(f"[SIMULATION] Vonage error: {result}")
+            except Exception as e:
+                sms_status = f"Vonage send failed: {str(e)}"
+                logger.error(f"[SIMULATION] Vonage error: {e}")
+        elif TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+            try:
+                from twilio.rest import Client
+                client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+                msg = client.messages.create(
+                    body=sms_message,
+                    from_=TWILIO_FROM_NUMBER,
+                    to=clean_number
+                )
+                sms_sent = True
+                sms_status = f"SMS sent to {recipient} via Twilio (SID: {msg.sid})"
+            except Exception as e:
+                sms_status = f"Twilio error: {str(e)}"
+        elif FAST2SMS_API_KEY:
+            try:
+                f2s_number = clean_number.replace("+91", "")
+                url = "https://www.fast2sms.com/dev/bulkV2"
+                payload = {"route": "q", "message": sms_message, "flash": 0, "numbers": f2s_number}
+                headers = {"authorization": FAST2SMS_API_KEY, "Content-Type": "application/json"}
+                response = requests.post(url, json=payload, headers=headers, timeout=10)
+                result = response.json()
+                if result.get("return"):
+                    sms_sent = True
+                    sms_status = f"SMS sent to {recipient} via Fast2SMS"
+                else:
+                    sms_status = f"Fast2SMS error: {result.get('message', 'Unknown')}"
+            except Exception as e:
+                sms_status = f"Fast2SMS error: {str(e)}"
+        else:
+            sms_status = "No SMS provider configured. Set VONAGE, TWILIO, or FAST2SMS credentials."
+    
+    steps.append(SimulationStep(
+        step=8, title="📱 SMS Alert",
+        detail=sms_status,
+        status="sent" if sms_sent else "warning"
+    ))
+    
+    return SimulationResult(
+        district=district_name,
+        scenario=f"Extreme monsoon — {rainfall_mm:.0f}mm rainfall, {soil_saturation*100:.0f}% soil saturation",
+        simulated_rainfall_mm=rainfall_mm,
+        simulated_soil_saturation=soil_saturation,
+        actual_avg_susceptibility=round(avg_sus, 3),
+        actual_max_susceptibility=round(max_sus, 3),
+        actual_avg_soil_susceptibility=round(avg_soil, 3) if avg_soil else None,
+        has_failure_zone=has_failure,
+        has_transit_zone=has_transit,
+        risk_level=risk_level,
+        alert_triggered=alert_triggered,
+        sms_message=sms_message,
+        sms_sent=sms_sent,
+        sms_status=sms_status,
+        recipient=recipient,
+        timestamp=datetime.now().isoformat(),
+        steps=steps
+    )
+

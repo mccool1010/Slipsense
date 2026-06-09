@@ -10,6 +10,7 @@ RASTERS = {
     "transit": BASE_DIR / "rasters" / "transit_mask.tif",
     "deposition": BASE_DIR / "rasters" / "deposition_mask.tif",
     "historical_susceptibility": BASE_DIR / "rasters" / "susceptibility_historical_gsi.tif",
+    "soil_susceptibility": BASE_DIR / "rasters" / "soil_susceptibility_index.tif",
 }
 
 # Per-district historical susceptibility rasters

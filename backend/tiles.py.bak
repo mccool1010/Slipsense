@@ -31,28 +31,27 @@ def colorize_hazard(arr):
     Colorize hazard_fused raster values.
     
     arr: 2D numpy array with values 0–3
-    Returns: RGBA image (h, w, 4) as uint8 with transparency for safe zones
+    Returns: RGB image (h, w, 3) as uint8
     
     Mapping:
-    0 = Safe (fully transparent)
-    1 = Deposition (Warm Yellow, semi-transparent)
-    2 = Transit (Orange, semi-transparent)
-    3 = Failure (Red, more opaque)
+    0 = Safe (transparent/black)
+    1 = Deposition (Yellow)
+    2 = Transit (Orange)
+    3 = Failure (Red)
     """
     h, w = arr.shape
-    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+    rgb = np.zeros((h, w, 3), dtype=np.uint8)
 
-    # Deposition → Warm Yellow (semi-transparent)
-    rgba[arr == 1] = [255, 220, 50, 200]
+    # Deposition → Yellow
+    rgb[arr == 1] = [255, 255, 0]
 
-    # Transit → Orange (semi-transparent)
-    rgba[arr == 2] = [255, 140, 0, 200]
+    # Transit → Orange
+    rgb[arr == 2] = [255, 165, 0]
 
-    # Failure → Red (more opaque)
-    rgba[arr == 3] = [220, 38, 38, 220]
+    # Failure → Red
+    rgb[arr == 3] = [220, 38, 38]
 
-    # Safe (0) stays [0,0,0,0] → fully transparent
-    return rgba
+    return rgb
 
 
 def colorize_historical_susceptibility(arr):
@@ -127,7 +126,7 @@ def tile(layer: str, z: str, x: str, y: str, district: str = None):
                 # Special handling for hazard_fused: colorize based on values 0-3
                 band = data[:, :, 0].astype(np.uint8)
                 img_arr = colorize_hazard(band)
-                img = Image.fromarray(img_arr, mode="RGBA")
+                img = Image.fromarray(img_arr, mode="RGB")
             elif data.shape[2] == 1:
                 band = data[:, :, 0]
                 img_arr = _normalize_band(band).astype('uint8')
