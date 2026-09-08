@@ -231,3 +231,33 @@ def tile(layer: str, z: str, x: str, y: str, district: str = None):
         return Response(content=_EMPTY_TILE, media_type="image/png")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/layers/bounds")
+def layer_bounds():
+    """WGS84 bounds and zoom hint for every configured raster layer.
+
+    The v2 stack covers a single 1x1 degree tile, which is a small fraction of the
+    Kerala view the app opens on. With no way to discover that, a correctly working
+    layer is indistinguishable from a broken one: everything outside the footprint is
+    legitimately transparent, so the map just looks empty. The frontend uses this to
+    fit the view to real coverage and to outline it.
+    """
+    from rasterio.warp import transform_bounds
+
+    out = {}
+    for name, path in RASTERS.items():
+        try:
+            with COGReader(str(path)) as cog:
+                src = cog.dataset
+                west, south, east, north = transform_bounds(
+                    src.crs, "EPSG:4326", *src.bounds, densify_pts=21)
+            out[name] = {
+                # Leaflet order: [[south, west], [north, east]]
+                "bounds": [[round(south, 6), round(west, 6)],
+                           [round(north, 6), round(east, 6)]],
+                "area_deg2": round(abs((east - west) * (north - south)), 4),
+            }
+        except Exception as exc:  # a missing or unreadable layer must not break the rest
+            out[name] = {"error": str(exc)}
+    return out
