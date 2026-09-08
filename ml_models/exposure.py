@@ -169,7 +169,10 @@ def main():
     ranked = []
     for idx, f in enumerate(paths["features"]):
         xy = np.asarray(f["geometry"]["coordinates"], dtype=float)
-        cols_p, rows_p = inv * (xy[:, 0], xy[:, 1])
+        # The corridor file is WGS84 (GeoJSON requires it); the rasters are projected,
+        # so the centrelines must be converted before they can index into a grid.
+        px, py = to_utm.transform(xy[:, 0], xy[:, 1])
+        cols_p, rows_p = inv * (np.asarray(px), np.asarray(py))
         rr = np.asarray(rows_p).astype(int)
         cc = np.asarray(cols_p).astype(int)
         ok = (rr >= 0) & (rr < h) & (cc >= 0) & (cc < w)
