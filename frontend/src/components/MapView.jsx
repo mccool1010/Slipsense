@@ -4,6 +4,7 @@ import {
   MapContainer,
   TileLayer,
   GeoJSON,
+  Rectangle,
   useMapEvents,
   ZoomControl,
 } from "react-leaflet";
@@ -76,6 +77,10 @@ const MapView = ({
   // travelling downslope. Off unless the runout layer is on, so it costs nothing when
   // the layer is hidden.
   const [dashOffset, setDashOffset] = useState(0);
+  // Footprint of the modelled layers. Everything outside it is legitimately
+  // transparent, which is indistinguishable from a broken layer unless the extent is
+  // shown and the view starts inside it.
+  const [coverage, setCoverage] = useState(null);
   const runoutAnimating = Boolean(activeLayers.runout);
   const hoverTimeoutRef = useRef(null);
   const mapContainerRef = useRef(null);
@@ -88,6 +93,27 @@ const MapView = ({
     const id = setInterval(() => setDashOffset((d) => (d + 2) % 20), 90);
     return () => clearInterval(id);
   }, [runoutAnimating]);
+
+  // Discover where the modelled layers actually have data, then frame the map on it.
+  React.useEffect(() => {
+    const loadBounds = async () => {
+      try {
+        const res = await fetch(`${TILE_SERVER}/layers/bounds`);
+        if (!res.ok) return;
+        const all = await res.json();
+        const b = all.susceptibility_ml?.bounds;
+        if (b) setCoverage(b);
+      } catch (err) {
+        console.warn("Could not load layer bounds:", err);
+      }
+    };
+    loadBounds();
+  }, []);
+
+  React.useEffect(() => {
+    if (!map || !coverage) return;
+    map.fitBounds(coverage, { padding: [24, 24] });
+  }, [map, coverage]);
 
   // Load runout GeoJSON on component mount
   React.useEffect(() => {
@@ -183,7 +209,10 @@ const MapView = ({
         center={[12.5, 75.0]}
         zoom={11}
         style={{ height: "100%", width: "100%" }}
-        whenCreated={(m) => setMap(m)}
+        // react-leaflet removed `whenCreated` in v4; this project is on v5, so that
+        // callback never fired and `map` stayed null - which silently disabled the
+        // invalidateSize handlers below as well as the fit-to-coverage effect.
+        ref={setMap}
         zoomControl={false}
       >
         {/* Zoom controls in top-right corner */}
@@ -205,15 +234,31 @@ const MapView = ({
           />
         )}
 
+        {/* Where the modelled layers have data. Without this the app looks broken
+            when panned away, because the footprint is ~1 square degree of a
+            Kerala-wide view. */}
+        {coverage && (
+          <Rectangle
+            bounds={coverage}
+            pathOptions={{
+              color: "#38bdf8",
+              weight: 1.5,
+              fill: false,
+              dashArray: "6 6",
+              interactive: false,
+            }}
+          />
+        )}
+
         {/* Raster overlays */}
         {activeLayers.susceptibilityML && (
-          <TileLayer url={rasterLayers.susceptibilityML} opacity={layerOpacity.susceptibilityML} />
+          <TileLayer url={rasterLayers.susceptibilityML} opacity={layerOpacity.susceptibilityML} bounds={coverage ?? undefined} />
         )}
         {activeLayers.uncertainty && (
-          <TileLayer url={rasterLayers.uncertainty} opacity={layerOpacity.uncertainty} />
+          <TileLayer url={rasterLayers.uncertainty} opacity={layerOpacity.uncertainty} bounds={coverage ?? undefined} />
         )}
         {activeLayers.susceptibilityDL && (
-          <TileLayer url={rasterLayers.susceptibilityDL} opacity={layerOpacity.susceptibilityDL} />
+          <TileLayer url={rasterLayers.susceptibilityDL} opacity={layerOpacity.susceptibilityDL} bounds={coverage ?? undefined} />
         )}
         {activeLayers.historicalSusceptibility && (
           <TileLayer
@@ -223,13 +268,13 @@ const MapView = ({
           />
         )}
         {activeLayers.hazardFused && (
-          <TileLayer url={rasterLayers.hazardFused} opacity={layerOpacity.hazardFused} />
+          <TileLayer url={rasterLayers.hazardFused} opacity={layerOpacity.hazardFused} bounds={coverage ?? undefined} />
         )}
         {activeLayers.transit && (
-          <TileLayer url={rasterLayers.transit} opacity={layerOpacity.transit} />
+          <TileLayer url={rasterLayers.transit} opacity={layerOpacity.transit} bounds={coverage ?? undefined} />
         )}
         {activeLayers.deposition && (
-          <TileLayer url={rasterLayers.deposition} opacity={layerOpacity.deposition} />
+          <TileLayer url={rasterLayers.deposition} opacity={layerOpacity.deposition} bounds={coverage ?? undefined} />
         )}
 
         {/* Runout paths */}
