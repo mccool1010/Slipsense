@@ -77,9 +77,8 @@ ANTECEDENT_15D_THRESHOLD_MM = 300.0
 #   WATCH                     5.0%    0.374                        100.0%
 #   HIGH                      1.0%    0.619                         84.9%
 #   VERY HIGH                 0.2%    0.869                         32.6%
-SUSCEPTIBILITY_WATCH = 0.374
-SUSCEPTIBILITY_HIGH = 0.619
-SUSCEPTIBILITY_VERY_HIGH = 0.869
+from thresholds import (SUSCEPTIBILITY_HIGH, SUSCEPTIBILITY_VERY_HIGH,  # noqa: E402
+                        SUSCEPTIBILITY_WATCH)
 
 # Share of a district's sampled area that must exceed SUSCEPTIBILITY_HIGH before the
 # district counts as exposed. A district *average* is the wrong statistic here: it is

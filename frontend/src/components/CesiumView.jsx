@@ -33,6 +33,60 @@ function velocityColor(v) {
   return Cesium.Color.fromHsl((1 - t) * 0.6, 0.9, 0.5, 0.9);
 }
 
+
+// Real elevation without a Cesium Ion account.
+//
+// Ion gates World Terrain and the Photorealistic tiles behind a token, and the
+// backend's terrain_tiles/ folder cannot substitute: those are 256x256 8-bit greyscale
+// PNGs, while Cesium's heightmap-1.0 expects 65x65 16-bit binary .terrain files, and
+// they only go to zoom 4 anyway.
+//
+// AWS hosts Mapzen/Tilezen terrarium tiles openly, which encode height in RGB:
+//     elevation = (R * 256 + G + B / 256) - 32768
+// Cesium cannot read that format directly, but CustomHeightmapTerrainProvider accepts
+// raw height samples from any source, so decoding them client-side gives genuine 3D
+// relief with no credentials.
+const TERRARIUM_URL =
+  "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+const HEIGHTMAP_SIZE = 64;
+
+function terrariumTerrainProvider() {
+  const canvas = document.createElement("canvas");
+  canvas.width = HEIGHTMAP_SIZE;
+  canvas.height = HEIGHTMAP_SIZE;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+  return new Cesium.CustomHeightmapTerrainProvider({
+    width: HEIGHTMAP_SIZE,
+    height: HEIGHTMAP_SIZE,
+    // Terrarium tiles are standard XYZ, so the scheme must be Web Mercator; the
+    // Geographic default would sample the wrong tiles entirely.
+    tilingScheme: new Cesium.WebMercatorTilingScheme(),
+    callback: async (x, y, level) => {
+      // Above the dataset's native zoom the request just 404s; returning undefined
+      // tells Cesium to upsample the parent rather than leave a hole.
+      if (level > 13) return undefined;
+      const url = TERRARIUM_URL.replace("{z}", level)
+        .replace("{x}", x)
+        .replace("{y}", y);
+      try {
+        const img = await Cesium.Resource.fetchImage({ url, crossOrigin: "anonymous" });
+        ctx.clearRect(0, 0, HEIGHTMAP_SIZE, HEIGHTMAP_SIZE);
+        ctx.drawImage(img, 0, 0, HEIGHTMAP_SIZE, HEIGHTMAP_SIZE);
+        const px = ctx.getImageData(0, 0, HEIGHTMAP_SIZE, HEIGHTMAP_SIZE).data;
+        const heights = new Float32Array(HEIGHTMAP_SIZE * HEIGHTMAP_SIZE);
+        for (let i = 0; i < heights.length; i += 1) {
+          const o = i * 4;
+          heights[i] = px[o] * 256 + px[o + 1] + px[o + 2] / 256 - 32768;
+        }
+        return heights;
+      } catch {
+        return undefined;
+      }
+    },
+  });
+}
+
 const CesiumView = ({ lat, lon, onClose }) => {
   const cesiumContainer = useRef(null);
   const viewerRef = useRef(null);
@@ -63,16 +117,21 @@ const CesiumView = ({ lat, lon, onClose }) => {
         const viewer = new Cesium.Viewer(cesiumContainer.current, {
           ...(ION_TOKEN
             ? { terrain: Cesium.Terrain.fromWorldTerrain() }
-            : {
-                terrainProvider: new Cesium.EllipsoidTerrainProvider(),
-                baseLayer: Cesium.ImageryLayer.fromProviderAsync(
-                  Promise.resolve(
-                    new Cesium.OpenStreetMapImageryProvider({
-                      url: "https://tile.openstreetmap.org/",
-                    })
-                  )
-                ),
-              }),
+            : { terrainProvider: terrariumTerrainProvider() }),
+          // Satellite imagery either way, matching the 2D map. The previous fallback
+          // used OpenStreetMap, which rendered a flat street map and looked nothing
+          // like the "3D terrain view" the button promises.
+          baseLayer: Cesium.ImageryLayer.fromProviderAsync(
+            Promise.resolve(
+              new Cesium.UrlTemplateImageryProvider({
+                url:
+                  "https://server.arcgisonline.com/ArcGIS/rest/services/" +
+                  "World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                credit: "© Esri",
+                maximumLevel: 18,
+              })
+            )
+          ),
           timeline: false,
           animation: false,
           baseLayerPicker: false,
@@ -154,6 +213,10 @@ const CesiumView = ({ lat, lon, onClose }) => {
           console.warn("Could not load runout corridors:", runoutError);
         }
 
+        // Western Ghats relief is real but subtle beside a 1000 m wide valley; a mild
+        // exaggeration makes the slopes that drive failure readable without cartooning.
+        viewer.scene.verticalExaggeration = 1.6;
+
         viewerRef.current = viewer;
         initialized.current = true;
         console.log("Cesium viewer created successfully");
@@ -162,8 +225,15 @@ const CesiumView = ({ lat, lon, onClose }) => {
         if (typeof lat === "number" && typeof lon === "number") {
           console.log(`Flying to lat: ${lat}, lon: ${lon}`);
           viewer.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(lon, lat, 2000),
-            duration: 1.8,
+            destination: Cesium.Cartesian3.fromDegrees(lon, lat - 0.045, 4500),
+            orientation: {
+              heading: Cesium.Math.toRadians(0),
+              // Oblique, not straight down: a nadir view flattens the terrain and
+              // defeats the purpose of opening a 3D view at all.
+              pitch: Cesium.Math.toRadians(-35),
+              roll: 0,
+            },
+            duration: 2.2,
           });
         }
 
