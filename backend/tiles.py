@@ -37,16 +37,10 @@ def _normalize_rgb(arr):
     return stacked
 
 
-# Susceptibility class breaks, imported from the alert module rather than restated
-# here. They are recalibrated by ml_models/calibrate_alert_threshold.py every time the
-# map is regenerated, and a second hardcoded copy had already fallen out of step - the
-# map would have been drawn with the previous model's cutoffs while alerts used the
-# current ones.
-from alerts import (SUSCEPTIBILITY_WATCH, SUSCEPTIBILITY_HIGH,
-                    SUSCEPTIBILITY_VERY_HIGH)
-
-SUSCEPTIBILITY_BREAKS = (SUSCEPTIBILITY_WATCH, SUSCEPTIBILITY_HIGH,
-                         SUSCEPTIBILITY_VERY_HIGH)
+# Class breaks live in thresholds.py, which imports nothing. Taking them from `alerts`
+# made rendering a PNG depend on shapely, rasterio and requests, so a missing shapely
+# install brought down the whole tile server.
+from thresholds import SUSCEPTIBILITY_BREAKS
 
 
 def colorize_susceptibility(band):

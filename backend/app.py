@@ -27,9 +27,16 @@ app.add_middleware(
 app.include_router(tiles_router)
 app.include_router(pixel_router)
 
-# Alert system router
-from alerts import router as alerts_router
-app.include_router(alerts_router)
+# Alert system router. Loaded defensively: alerting pulls in shapely and the SMS
+# providers, and none of that is needed to serve tiles or pixel queries. A missing
+# optional dependency should disable one feature, not the entire server.
+try:
+    from alerts import router as alerts_router
+    app.include_router(alerts_router)
+except Exception as exc:  # pragma: no cover - depends on the local environment
+    print(f"WARNING: alert system unavailable ({exc}). "
+          f"Tiles and pixel queries still work. "
+          f"Install backend/requirements.txt to enable alerts.")
 
 # Serve static files (rasters, GeoJSON, etc.)
 rasters_dir = Path(__file__).parent / "rasters"
