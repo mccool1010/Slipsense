@@ -219,18 +219,31 @@ def test_leaking_scripts_refuse_to_run(script):
 # --------------------------------------------------------------------------
 
 def test_alert_thresholds_match_the_calibration_file():
-    """Thresholds in alerts.py must track the map they were calibrated against."""
+    """The deployed thresholds must track the map they were calibrated against.
+
+    They live in backend/thresholds.py, which deliberately imports nothing: taking them
+    from alerts.py made tile rendering depend on shapely and the SMS stack.
+    """
     calib = ROOT / "ml_models" / "alert_calibration.json"
     if not calib.exists():
         pytest.skip("calibration not run")
     tiers = json.loads(calib.read_text())["tiers"]
-    src = (ROOT / "backend" / "alerts.py").read_text(encoding="utf-8")
+    src = (ROOT / "backend" / "thresholds.py").read_text(encoding="utf-8")
     for name, const in (("WATCH", "SUSCEPTIBILITY_WATCH"),
                         ("HIGH", "SUSCEPTIBILITY_HIGH"),
                         ("VERY HIGH", "SUSCEPTIBILITY_VERY_HIGH")):
         expected = round(tiers[name]["threshold"], 3)
         assert f"{const} = {expected}" in src, (
             f"{const} does not match calibrated {expected}")
+
+
+def test_tiles_does_not_import_the_alert_stack():
+    """Rendering a PNG must not require shapely, rasterio's alert path or the SMS
+    providers. Importing thresholds from alerts once made a missing shapely install
+    take down the entire tile server."""
+    src = (ROOT / "backend" / "tiles.py").read_text(encoding="utf-8")
+    assert "from alerts import" not in src and "import alerts" not in src, (
+        "tiles.py imports the alert module, re-coupling tile rendering to shapely")
 
 
 def test_rainfall_failure_is_not_reported_as_zero():
