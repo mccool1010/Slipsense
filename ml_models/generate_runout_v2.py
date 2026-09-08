@@ -31,6 +31,7 @@ from pathlib import Path
 
 import numpy as np
 import rasterio
+from pyproj import Transformer
 
 sys.path.insert(0, str(Path(__file__).parent))
 import runout as runout_model  # noqa: E402
@@ -131,12 +132,19 @@ def main():
     )
     log(f"  {len(paths)} paths", t0)
 
+    # GeoJSON must be WGS84 lon/lat. RFC 7946 removed the `crs` member entirely, and
+    # Leaflet ignores it, so writing projected metres here puts every corridor tens of
+    # thousands of degrees off the map - which is exactly what happened when this file
+    # was first written in EPSG:32643.
+    to_wgs = Transformer.from_crs(profile["crs"], "EPSG:4326", always_xy=True)
+
     features = []
     for pts in paths:
         coords, vels = [], []
         for r, c in pts:
             x, y = transform * (c + 0.5, r + 0.5)
-            coords.append([round(float(x), 2), round(float(y), 2)])
+            lon, lat = to_wgs.transform(x, y)
+            coords.append([round(float(lon), 6), round(float(lat), 6)])
             v = vel[r, c]
             if np.isfinite(v):
                 vels.append(float(v))
@@ -159,12 +167,9 @@ def main():
             },
         })
 
-    geojson = {
-        "type": "FeatureCollection",
-        "crs": {"type": "name",
-                "properties": {"name": str(profile["crs"])}},
-        "features": features,
-    }
+    # No `crs` member: RFC 7946 defines GeoJSON as WGS84 and removed it. Declaring one
+    # gave false reassurance while consumers silently assumed degrees.
+    geojson = {"type": "FeatureCollection", "features": features}
     out_geojson = stack / "runout_paths.geojson"
     out_geojson.write_text(json.dumps(geojson))
     log(f"Wrote {out_geojson.relative_to(ROOT)}")

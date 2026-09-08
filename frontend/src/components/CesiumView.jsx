@@ -33,44 +33,6 @@ function velocityColor(v) {
   return Cesium.Color.fromHsl((1 - t) * 0.6, 0.9, 0.5, 0.9);
 }
 
-// runout_paths.geojson carries EPSG:32643 metres, not degrees, because it is written
-// alongside the rasters. Cesium needs degrees, so convert with the inverse UTM 43N
-// formulae rather than pulling in a projection library for one transform.
-async function buildProjector(geo) {
-  const name = geo?.crs?.properties?.name || "";
-  if (name.includes("4326")) return (x, y) => [x, y];
-
-  const k0 = 0.9996, a = 6378137.0, e = 0.081819191;
-  const e1sq = 0.006739497, falseEasting = 500000.0, lon0 = 75.0;
-  return (x, y) => {
-    const m = y / k0;
-    const mu = m / (a * (1 - e * e / 4 - (3 * e ** 4) / 64 - (5 * e ** 6) / 256));
-    const e1 = (1 - Math.sqrt(1 - e * e)) / (1 + Math.sqrt(1 - e * e));
-    const phi1 =
-      mu +
-      ((3 * e1) / 2 - (27 * e1 ** 3) / 32) * Math.sin(2 * mu) +
-      ((21 * e1 ** 2) / 16 - (55 * e1 ** 4) / 32) * Math.sin(4 * mu) +
-      ((151 * e1 ** 3) / 96) * Math.sin(6 * mu);
-    const n = a / Math.sqrt(1 - (e * Math.sin(phi1)) ** 2);
-    const t = Math.tan(phi1) ** 2;
-    const c = e1sq * Math.cos(phi1) ** 2;
-    const r = (a * (1 - e * e)) / Math.pow(1 - (e * Math.sin(phi1)) ** 2, 1.5);
-    const d = (x - falseEasting) / (n * k0);
-    const lat =
-      phi1 -
-      ((n * Math.tan(phi1)) / r) *
-        ((d * d) / 2 -
-          ((5 + 3 * t + 10 * c - 4 * c * c - 9 * e1sq) * d ** 4) / 24 +
-          ((61 + 90 * t + 298 * c + 45 * t * t - 252 * e1sq - 3 * c * c) * d ** 6) / 720);
-    const lon =
-      (d -
-        ((1 + 2 * t + c) * d ** 3) / 6 +
-        ((5 - 2 * c + 28 * t - 3 * c * c + 8 * e1sq + 24 * t * t) * d ** 5) / 120) /
-      Math.cos(phi1);
-    return [lon0 + (lon * 180) / Math.PI, (lat * 180) / Math.PI];
-  };
-}
-
 const CesiumView = ({ lat, lon, onClose }) => {
   const cesiumContainer = useRef(null);
   const viewerRef = useRef(null);
@@ -93,8 +55,24 @@ const CesiumView = ({ lat, lon, onClose }) => {
         cesiumContainer.current.innerHTML = '';
 
         // Create viewer with Google Photorealistic 3D Tiles
+        // World terrain and Photorealistic tiles are Ion-hosted and need a token.
+        // Without one, fall back to a plain ellipsoid with OSM imagery so the view
+        // still renders the susceptibility drape and runout corridors rather than a
+        // blank globe - the previous behaviour, which looked like the feature was
+        // simply broken.
         const viewer = new Cesium.Viewer(cesiumContainer.current, {
-          terrain: Cesium.Terrain.fromWorldTerrain(),
+          ...(ION_TOKEN
+            ? { terrain: Cesium.Terrain.fromWorldTerrain() }
+            : {
+                terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+                baseLayer: Cesium.ImageryLayer.fromProviderAsync(
+                  Promise.resolve(
+                    new Cesium.OpenStreetMapImageryProvider({
+                      url: "https://tile.openstreetmap.org/",
+                    })
+                  )
+                ),
+              }),
           timeline: false,
           animation: false,
           baseLayerPicker: false,
@@ -106,8 +84,9 @@ const CesiumView = ({ lat, lon, onClose }) => {
           requestRenderMode: false,
         });
 
-        // Add Google Photorealistic 3D Tiles
+        // Add Google Photorealistic 3D Tiles (Ion-hosted; skipped without a token)
         try {
+          if (!ION_TOKEN) throw new Error("no Ion token configured");
           const googlePhotorealistic3dTileset = await Cesium.Cesium3DTileset.fromUrl(
             Cesium.IonResource.fromAssetId(2275207),
             {
@@ -143,14 +122,13 @@ const CesiumView = ({ lat, lon, onClose }) => {
           const res = await fetch(`${TILE_SERVER}/rasters/runout_paths.geojson`);
           if (res.ok) {
             const geo = await res.json();
-            const toDeg = await buildProjector(geo);
             let drawn = 0;
             for (const f of (geo.features || []).slice(0, 250)) {
               const coords = f.geometry?.coordinates || [];
               if (coords.length < 2) continue;
+              // Corridors are WGS84 lon/lat, as GeoJSON requires.
               const flat = [];
-              for (const [x, y] of coords) {
-                const [lonDeg, latDeg] = toDeg(x, y);
+              for (const [lonDeg, latDeg] of coords) {
                 flat.push(lonDeg, latDeg);
               }
               const v = f.properties?.max_velocity_ms ?? 0;
