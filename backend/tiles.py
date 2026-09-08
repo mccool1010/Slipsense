@@ -1,11 +1,22 @@
 from fastapi import APIRouter, HTTPException, Response
 from config import RASTERS, DISTRICT_RASTERS
 from rio_tiler.io import COGReader
+from rio_tiler.errors import TileOutsideBounds
 import numpy as np
 from io import BytesIO
 from PIL import Image
 
 router = APIRouter()
+
+
+def _make_empty_tile():
+    """A single fully transparent 256x256 PNG, encoded once at import."""
+    buf = BytesIO()
+    Image.new("RGBA", (256, 256), (0, 0, 0, 0)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+_EMPTY_TILE = _make_empty_tile()
 
 
 def _normalize_band(band):
@@ -26,14 +37,16 @@ def _normalize_rgb(arr):
     return stacked
 
 
-# Calibrated susceptibility class breaks, from ml_models/calibrate_alert_threshold.py.
-# These are the same cutoffs the alert system uses, so what a viewer sees and what
-# triggers an SMS cannot drift apart.
-#
-#   WATCH      0.446   flags  5% of terrain, contains 100% of the mapped inventory
-#   HIGH       0.704   flags  1% of terrain, contains  63%
-#   VERY HIGH  0.871   flags 0.2% of terrain, contains 21%
-SUSCEPTIBILITY_BREAKS = (0.446, 0.704, 0.871)
+# Susceptibility class breaks, imported from the alert module rather than restated
+# here. They are recalibrated by ml_models/calibrate_alert_threshold.py every time the
+# map is regenerated, and a second hardcoded copy had already fallen out of step - the
+# map would have been drawn with the previous model's cutoffs while alerts used the
+# current ones.
+from alerts import (SUSCEPTIBILITY_WATCH, SUSCEPTIBILITY_HIGH,
+                    SUSCEPTIBILITY_VERY_HIGH)
+
+SUSCEPTIBILITY_BREAKS = (SUSCEPTIBILITY_WATCH, SUSCEPTIBILITY_HIGH,
+                         SUSCEPTIBILITY_VERY_HIGH)
 
 
 def colorize_susceptibility(band):
@@ -209,5 +222,12 @@ def tile(layer: str, z: str, x: str, y: str, district: str = None):
             img.save(buf, format='PNG')
             return Response(content=buf.getvalue(), media_type='image/png')
 
+    except TileOutsideBounds:
+        # A web map requests a full grid of tiles across the viewport, but each raster
+        # covers only its own footprint - the v2 stack is a single 1x1 degree tile. Every
+        # request outside it previously returned HTTP 500, so Leaflet drew nothing at all
+        # and the layer looked broken even where data existed. Serving a transparent tile
+        # is what a tile server is supposed to do here.
+        return Response(content=_EMPTY_TILE, media_type="image/png")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
