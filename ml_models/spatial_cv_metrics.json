@@ -1,0 +1,243 @@
+{
+  "n_samples": 2779,
+  "n_positive": 279,
+  "n_negative": 2500,
+  "features": [
+    "elevation",
+    "slope",
+    "plan_curvature",
+    "profile_curvature",
+    "twi",
+    "spi",
+    "flow_acc",
+    "dist_river",
+    "drainage_density",
+    "relative_relief",
+    "aspect_north",
+    "aspect_east",
+    "forest_fraction",
+    "bare_fraction",
+    "soil_clay",
+    "soil_sand",
+    "soil_index"
+  ],
+  "block_km": 5.0,
+  "folds": 5,
+  "spatial": [
+    {
+      "model": "RandomForest",
+      "auc": 0.8953921146953404,
+      "pr_auc": 0.6355189008658476,
+      "precision": 0.6452991452991453,
+      "recall": 0.5412186379928315,
+      "f1": 0.5886939571150097,
+      "brier": 0.05831928239024069,
+      "threshold": 0.4026978625379951,
+      "confusion": [
+        [
+          2417,
+          83
+        ],
+        [
+          128,
+          151
+        ]
+      ],
+      "n": 2779
+    },
+    {
+      "model": "XGBoost",
+      "auc": 0.8916329749103942,
+      "pr_auc": 0.6090462945844024,
+      "precision": 0.6894736842105263,
+      "recall": 0.46953405017921146,
+      "f1": 0.55863539445629,
+      "brier": 0.06040101800667547,
+      "threshold": 0.3399437963962555,
+      "confusion": [
+        [
+          2441,
+          59
+        ],
+        [
+          148,
+          131
+        ]
+      ],
+      "n": 2779
+    },
+    {
+      "model": "LightGBM",
+      "auc": 0.8823455197132617,
+      "pr_auc": 0.5988019584472413,
+      "precision": 0.5736434108527132,
+      "recall": 0.5304659498207885,
+      "f1": 0.5512104283054003,
+      "brier": 0.06640836785283981,
+      "threshold": 0.3329446402578345,
+      "confusion": [
+        [
+          2390,
+          110
+        ],
+        [
+          131,
+          148
+        ]
+      ],
+      "n": 2779
+    }
+  ],
+  "random": [
+    {
+      "model": "RandomForest",
+      "auc": 0.891631541218638,
+      "pr_auc": 0.6455513062333308,
+      "precision": 0.6971153846153846,
+      "recall": 0.5197132616487455,
+      "f1": 0.5954825462012321,
+      "brier": 0.05791243810929251,
+      "threshold": 0.44759363204077013,
+      "confusion": [
+        [
+          2437,
+          63
+        ],
+        [
+          134,
+          145
+        ]
+      ],
+      "n": 2779
+    },
+    {
+      "model": "XGBoost",
+      "auc": 0.8871412186379929,
+      "pr_auc": 0.626777852925002,
+      "precision": 0.7470588235294118,
+      "recall": 0.4551971326164875,
+      "f1": 0.5657015590200446,
+      "brier": 0.05942232661786468,
+      "threshold": 0.48342305421829224,
+      "confusion": [
+        [
+          2457,
+          43
+        ],
+        [
+          152,
+          127
+        ]
+      ],
+      "n": 2779
+    },
+    {
+      "model": "LightGBM",
+      "auc": 0.8803827956989247,
+      "pr_auc": 0.6187901499221274,
+      "precision": 0.6525821596244131,
+      "recall": 0.4982078853046595,
+      "f1": 0.5650406504065041,
+      "brier": 0.06516338699083413,
+      "threshold": 0.5139491398945214,
+      "confusion": [
+        [
+          2426,
+          74
+        ],
+        [
+          140,
+          139
+        ]
+      ],
+      "n": 2779
+    }
+  ],
+  "permutation_importance": [
+    {
+      "feature": "forest_fraction",
+      "importance": 0.21257137553320699,
+      "std": 0.01570609884652318
+    },
+    {
+      "feature": "relative_relief",
+      "importance": 0.2024145121784724,
+      "std": 0.030454810843648428
+    },
+    {
+      "feature": "elevation",
+      "importance": 0.062376767492976014,
+      "std": 0.018803032308100834
+    },
+    {
+      "feature": "drainage_density",
+      "importance": 0.0548584134970897,
+      "std": 0.015040329349200004
+    },
+    {
+      "feature": "soil_clay",
+      "importance": 0.03005654741203497,
+      "std": 0.016968520392594482
+    },
+    {
+      "feature": "soil_sand",
+      "importance": 0.016442150956904322,
+      "std": 0.016786763053049582
+    },
+    {
+      "feature": "soil_index",
+      "importance": 0.013287265313414653,
+      "std": 0.009945776968446831
+    },
+    {
+      "feature": "twi",
+      "importance": 0.006846439460717735,
+      "std": 0.012525989459002969
+    },
+    {
+      "feature": "bare_fraction",
+      "importance": 0.0,
+      "std": 0.0
+    },
+    {
+      "feature": "aspect_east",
+      "importance": -0.0004710401461910374,
+      "std": 0.005764889095796241
+    },
+    {
+      "feature": "flow_acc",
+      "importance": -0.0025711694082052538,
+      "std": 0.006057354905708482
+    },
+    {
+      "feature": "dist_river",
+      "importance": -0.0033401873139164316,
+      "std": 0.014061275266060437
+    },
+    {
+      "feature": "slope",
+      "importance": -0.006099213452239039,
+      "std": 0.012280408823233892
+    },
+    {
+      "feature": "plan_curvature",
+      "importance": -0.007895560265578338,
+      "std": 0.006195490285744011
+    },
+    {
+      "feature": "aspect_north",
+      "importance": -0.012720878264642643,
+      "std": 0.00485577750157061
+    },
+    {
+      "feature": "profile_curvature",
+      "importance": -0.01373233893928295,
+      "std": 0.008427502611081387
+    },
+    {
+      "feature": "spi",
+      "importance": -0.019200075583475428,
+      "std": 0.006257671766529373
+    }
+  ]
+}

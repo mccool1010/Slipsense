@@ -43,6 +43,25 @@ function MapHoverHandler({ onHover }) {
 /* ================================
    MapView Component
 ================================ */
+// Configurable so a deployed build can point at a real host; falls back to localhost
+// for development. Module scope, so effects do not need it as a dependency.
+const TILE_SERVER = import.meta.env.VITE_TILE_SERVER || "http://localhost:8000";
+
+// Velocity ramp for runout corridors: blue slow, red fast. Matches the colouring used
+// in ml_models/runout_figure.py so the app and the figures tell the same story.
+function velocityColor(v) {
+  if (v == null || Number.isNaN(v)) return "#00ffff";
+  const t = Math.max(0, Math.min(1, v / 25));
+  const hue = (1 - t) * 210; // 210 = blue, 0 = red
+  return `hsl(${hue}, 90%, 52%)`;
+}
+
+// Corridors that fall further carry more energy, so draw them heavier.
+function corridorWeight(dropM) {
+  if (dropM == null || Number.isNaN(dropM)) return 2;
+  return Math.max(1.5, Math.min(6, 1.5 + dropM / 120));
+}
+
 const MapView = ({
   activeLayers,
   layerOpacity,
@@ -50,14 +69,25 @@ const MapView = ({
   sidebarOpen,
   selectedDistrict = "all",
 }) => {
-  const TILE_SERVER = "http://localhost:8000";
   const [hoverInfo, setHoverInfo] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [runoutGeoJSON, setRunoutGeoJSON] = useState(null);
+  // Animation of the runout corridors: a marching dash pattern that reads as debris
+  // travelling downslope. Off unless the runout layer is on, so it costs nothing when
+  // the layer is hidden.
+  const [dashOffset, setDashOffset] = useState(0);
+  const runoutAnimating = Boolean(activeLayers.runout);
   const hoverTimeoutRef = useRef(null);
   const mapContainerRef = useRef(null);
   const [map, setMap] = React.useState(null);
   const resizeTimeoutRef = useRef(null);
+
+  // Advance the dash pattern while the runout layer is visible.
+  React.useEffect(() => {
+    if (!runoutAnimating) return undefined;
+    const id = setInterval(() => setDashOffset((d) => (d + 2) % 20), 90);
+    return () => clearInterval(id);
+  }, [runoutAnimating]);
 
   // Load runout GeoJSON on component mount
   React.useEffect(() => {
@@ -83,6 +113,7 @@ const MapView = ({
   const rasterLayers = {
     susceptibilityML: `${TILE_SERVER}/tiles/susceptibility_ml/{z}/{x}/{y}.png`,
     susceptibilityDL: `${TILE_SERVER}/tiles/susceptibility_dl/{z}/{x}/{y}.png`,
+    uncertainty: `${TILE_SERVER}/tiles/uncertainty/{z}/{x}/{y}.png`,
     historicalSusceptibility: historicalUrl,
     hazardFused: `${TILE_SERVER}/tiles/hazard_fused/{z}/{x}/{y}.png`,
     transit: `${TILE_SERVER}/tiles/transit/{z}/{x}/{y}.png`,
@@ -173,6 +204,9 @@ const MapView = ({
         {activeLayers.susceptibilityML && (
           <TileLayer url={rasterLayers.susceptibilityML} opacity={layerOpacity.susceptibilityML} />
         )}
+        {activeLayers.uncertainty && (
+          <TileLayer url={rasterLayers.uncertainty} opacity={layerOpacity.uncertainty} />
+        )}
         {activeLayers.susceptibilityDL && (
           <TileLayer url={rasterLayers.susceptibilityDL} opacity={layerOpacity.susceptibilityDL} />
         )}
@@ -198,14 +232,35 @@ const MapView = ({
           <>
             {console.log("Rendering runout paths, feature count:", runoutGeoJSON.features.length)}
             <GeoJSON
+              key={`runout-${runoutAnimating ? "anim" : "static"}`}
               data={runoutGeoJSON}
-              style={{
-                color: "#00ffff",
-                weight: 2,
+              style={(feature) => ({
+                // Colour by modelled velocity and scale width by the drop the corridor
+                // spans, so a short creep and a fast, high-energy surge are visually
+                // distinct rather than both drawn as the same cyan thread.
+                color: velocityColor(feature?.properties?.max_velocity_ms),
+                weight: corridorWeight(feature?.properties?.drop_m),
                 opacity: layerOpacity.runout,
-              }}
+                // A dash offset animated over time reads as material travelling down
+                // the corridor, which is what the velocity field actually describes.
+                dashArray: runoutAnimating ? "8 12" : null,
+                dashOffset: runoutAnimating ? String(-dashOffset) : null,
+                lineCap: "round",
+              })}
               onEachFeature={(feature, layer) => {
-                console.log("Runout path feature loaded:", feature);
+                const p = feature?.properties || {};
+                layer.bindTooltip(
+                  `<b>Runout corridor</b><br/>` +
+                  `Length ${p.length_m ?? "?"} m<br/>` +
+                  `Drop ${p.drop_m ?? "?"} m<br/>` +
+                  `Max velocity ${p.max_velocity_ms ?? "?"} m/s<br/>` +
+                  `Reach angle ${p.reach_angle_deg ?? "?"}°` +
+                  (p.buildings_at_risk != null
+                    ? `<br/>Buildings at risk ${p.buildings_at_risk}` +
+                      `<br/>Road at risk ${p.road_km_at_risk ?? 0} km`
+                    : ""),
+                  { sticky: true }
+                );
                 layer.on({
                   click: () => {
                     onMapClick({

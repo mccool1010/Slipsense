@@ -16,6 +16,7 @@ import AlertPanel from "./components/AlertPanel";
 const layerNames = {
   susceptibilityML: "ML Susceptibility",
   susceptibilityDL: "DL Susceptibility",
+  uncertainty: "Model Uncertainty",
   hazardFused: "Final Hazard Map",
   runout: "Runout Paths",
   transit: "Transit Zone",
@@ -33,6 +34,8 @@ function AppContent() {
   const [activeLayers, setActiveLayers] = useState({
     susceptibilityML: false,
     susceptibilityDL: true,
+    // Off by default: it is a caveat layer, not a hazard layer.
+    uncertainty: false,
     hazardFused: true,
     runout: true,
     transit: false,
@@ -47,6 +50,7 @@ function AppContent() {
   const [layerOpacity, setLayerOpacity] = useState({
     susceptibilityML: 0.6,
     susceptibilityDL: 0.7,
+    uncertainty: 0.5,
     hazardFused: 0.8,
     transit: 0.7,
     deposition: 0.7,

@@ -1,0 +1,20 @@
+{
+  "auc": 0.8963412186379929,
+  "pr_auc": 0.5931028046881479,
+  "precision": 0.5555555555555556,
+  "recall": 0.5555555555555556,
+  "f1": 0.5555555555555556,
+  "threshold": 0.7915579970683413,
+  "patch_cells": 32,
+  "patch_metres": 960,
+  "channels": [
+    "elevation",
+    "slope",
+    "plan_curvature",
+    "profile_curvature",
+    "twi",
+    "relative_relief"
+  ],
+  "n_samples": 2779,
+  "n_positive": 279
+}

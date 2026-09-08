@@ -1,5 +1,18 @@
 # SlipSense – Landslide Susceptibility & Runout Prediction System for Kerala
 
+> [!WARNING]
+> **Some figures in this document are retracted.** Any mention of F1 0.832,
+> Accuracy 85.6%, ROC-AUC 0.958, or coverage of "all 14 districts" is invalid.
+> Those metrics came from a dataset with 550 of 800 rows fabricated and two features
+> derived from the label; the terrain rasters feeding them were also mislabelled
+> (`DEM_filled_75.tif` held slope, not elevation).
+>
+> Current, verified results: [MODEL_CARD.md](docs/MODEL_CARD.md).
+> Key correction: the model is trained on one tile covering **2** Kerala districts,
+> and out of sample it does **not** beat relative relief alone.
+
+
+
 ## 1. Project Overview
 
 ### 1.1 Problem Statement
@@ -329,6 +342,29 @@ Risk level is computed as: `susceptibility × (1 + rainfall/20)`
 ---
 
 ## 8. Project Limitations
+
+> The five limitations below were written for the original system. Four further ones
+> emerged from the rebuild and matter more than any of them. Full detail in
+> [MODEL_CARD.md](docs/MODEL_CARD.md).
+>
+> **A. Model coverage is two districts, not fourteen.** The inventory used for training
+> lies entirely inside one 1°×1° tile intersecting only Kasaragod and Kannur; 215 of the
+> 279 points are outside Kerala altogether. Prediction has since been extended to 10
+> tiles across the Western Ghats, but those nine are extrapolation.
+>
+> **B. The system does not detect landslides.** It predicts susceptibility — which
+> slopes *could* fail. Detection of failures that have already happened is a separate
+> capability, now prototyped via Sentinel-2 change detection but not part of the app.
+>
+> **C. The machine learning does not beat a plain slope raster out of sample.** Against
+> 42 independent satellite-mapped scars, slope alone reaches the 88.0th percentile and
+> the trained model 84.9th. The *map* is good — scars land in its top quintile at 3.7×
+> chance, p = 2e-13 — but the ML component is not yet justified over a simple
+> slope-and-relief index.
+>
+> **D. Earlier published metrics are retracted.** F1 0.832 / ROC-AUC 0.958 came from a
+> dataset with 550 of 800 rows fabricated and two features derived from the label, fed
+> by rasters whose contents did not match their names.
 
 1. **DEM Resolution Dependency**: Results are constrained by 30m SRTM/CartoDEM resolution; sub-meter terrain features are not captured
 

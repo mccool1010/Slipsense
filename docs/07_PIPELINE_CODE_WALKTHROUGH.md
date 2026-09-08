@@ -1,5 +1,18 @@
 # SlipSense: From Raw Input to Raster Layers — Full Pipeline Walkthrough
 
+> [!WARNING]
+> **Some figures in this document are retracted.** Any mention of F1 0.832,
+> Accuracy 85.6%, ROC-AUC 0.958, or coverage of "all 14 districts" is invalid.
+> Those metrics came from a dataset with 550 of 800 rows fabricated and two features
+> derived from the label; the terrain rasters feeding them were also mislabelled
+> (`DEM_filled_75.tif` held slope, not elevation).
+>
+> Current, verified results: [MODEL_CARD.md](MODEL_CARD.md).
+> Key correction: the model is trained on one tile covering **2** Kerala districts,
+> and out of sample it does **not** beat relative relief alone.
+
+
+
 **Document Version:** 2.0
 **Last Updated:** 2026-02-17
 **Project:** SlipSense Landslide Prediction System

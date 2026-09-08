@@ -24,15 +24,34 @@
 
 ## Executive Summary
 
-The SlipSense ML pipeline underwent significant optimization, achieving a **+42% improvement in F1 score** from baseline (0.585) to the final enhanced model (0.832).
+> **Superseded — read this first.** Every "Enhanced" figure below (F1 0.832, ROC-AUC
+> 0.958) is invalid and must not be quoted. Those numbers came from a dataset in which
+> 550 of 800 rows were fabricated with `np.random.uniform`, and two features were
+> generated *conditional on the label*, so the rule `dist_river < 1250` separated the
+> synthetic rows with 100% accuracy. The models were reading the answer, not the terrain.
+>
+> A second, independent defect made the inputs meaningless as well: the raster stack was
+> mislabelled. `DEM_filled_75.tif` held slope in degrees rather than elevation, and
+> `slope75.tif` was computed in EPSG:4326, pinning every cell at 83–90°.
+>
+> **Current, honest results are in [spatial_cv_report.md](../ml_models/spatial_cv_report.md)
+> and [cnn_report.md](../ml_models/cnn_report.md)**, measured with spatial-block
+> cross-validation on real data only:
+>
+> | Model | AUC | PR-AUC | Precision | Recall | F1 |
+> |---|---|---|---|---|---|
+> | Patch CNN | **0.896** | **0.593** | 0.556 | 0.556 | 0.556 |
+> | RandomForest | 0.881 | 0.526 | 0.600 | 0.473 | 0.529 |
+>
+> The section below is kept only as a record of what went wrong.
 
-| Metric | Baseline | Optimized | Enhanced (Final) | Improvement |
-|--------|----------|-----------|------------------|-------------|
-| **F1 Score** | 0.585 | 0.639 | **0.832** | +42.2% |
-| **Accuracy** | 62.0% | 66.0% | **85.6%** | +38.1% |
-| **Precision** | 59.3% | 64.6% | **90.5%** | +52.6% |
-| **Recall** | 62.0% | 66.0% | **77.0%** | +24.2% |
-| **ROC-AUC** | 0.479 | 0.525 | **0.958** | +100.0% |
+| Metric | Baseline | Optimized | Enhanced (INVALID — label leakage) |
+|--------|----------|-----------|------------------|
+| **F1 Score** | 0.585 | 0.639 | ~~0.832~~ |
+| **Accuracy** | 62.0% | 66.0% | ~~85.6%~~ |
+| **Precision** | 59.3% | 64.6% | ~~90.5%~~ |
+| **Recall** | 62.0% | 66.0% | ~~77.0%~~ |
+| **ROC-AUC** | 0.479 | 0.525 | ~~0.958~~ |
 
 ### Key Technologies Used
 - **RandomForest** - Ensemble of decision trees
@@ -88,7 +107,11 @@ The SlipSense ML pipeline underwent significant optimization, achieving a **+42%
 | RandomForest | Baseline | 250 | 0.548 | 56.0% | 54.2% | 56.0% | 0.498 |
 | RandomForest | Optimized | 250 | 0.639 | 66.0% | 64.6% | 66.0% | 0.525 |
 | XGBoost | Optimized | 250 | 0.531 | 54.0% | 52.5% | 54.0% | 0.589 |
-| **Stacking Ensemble** | **Enhanced** | **800** | **0.832** | **85.6%** | **90.5%** | **77.0%** | **0.958** |
+| ~~Stacking Ensemble~~ | ~~Enhanced~~ | ~~800~~ | ~~0.832~~ | ~~85.6%~~ | ~~90.5%~~ | ~~77.0%~~ | ~~0.958~~ |
+
+> The Stacking Ensemble row is struck through because its 800-row dataset was 69%
+> synthetic with label-conditional features. Superseded by the spatial-CV results at the
+> top of this document.
 
 ### Visual F1 Score Comparison
 

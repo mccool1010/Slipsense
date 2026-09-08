@@ -2,15 +2,25 @@
 District-wise Emergency SMS Alert System for SlipSense
 
 This module provides landslide alert functionality that:
-1. Analyzes DL susceptibility within each district
+1. Analyzes v2 susceptibility within each district
 2. Checks for hazardous zones (Failure/Transit) in the fused hazard raster
-3. Fetches rainfall data from OpenWeather API
-4. Sends SMS alerts via Twilio when risk thresholds are exceeded
+3. Fetches rainfall, with antecedent history, via the `rainfall` module (Open-Meteo)
+4. Sends SMS alerts when risk thresholds are exceeded
 
 ALERT TRIGGER CONDITIONS (ALL must be true):
-- Average OR maximum DL susceptibility >= 0.75 in the district
-- Rainfall >= 50mm in last 24 hours
+- At least DISTRICT_AREA_FRACTION of the district's sampled area exceeds
+  SUSCEPTIBILITY_HIGH, OR any sample exceeds SUSCEPTIBILITY_VERY_HIGH
+- Rainfall >= RAINFALL_THRESHOLD_MM in 24 hours (60% of that if soil is clay-rich),
+  OR 15-day antecedent rainfall >= ANTECEDENT_15D_THRESHOLD_MM
 - District contains Failure (3) or Transit (2) zones
+
+The cutoffs are named rather than written out here because they are recalibrated
+whenever the susceptibility map is regenerated; see the constants below for their
+current values and the selectivity each one buys.
+
+If rainfall cannot be retrieved the district is reported as
+"UNKNOWN (rainfall unavailable)" rather than LOW, because a failed lookup must never
+read as "safe".
 
 This is a DECISION-SUPPORT PROTOTYPE, not an official warning system.
 Final authority lies with disaster management agencies.
@@ -44,8 +54,40 @@ router = APIRouter(prefix="/alerts", tags=["Alert System"])
 
 DISTRICT_GEOJSON_PATH = BASE_DIR.parent / "Kerala_District_Boundary.geojson"
 
+import rainfall as rainfall_source  # noqa: E402
+
+# Points sampled per district for rainfall; the centroid alone is not representative.
+RAINFALL_SAMPLE_POINTS = 5
+# A wet fortnight primes slopes even without a single extreme day.
+ANTECEDENT_15D_THRESHOLD_MM = 300.0
+
 # Risk thresholds
-SUSCEPTIBILITY_THRESHOLD = 0.75
+#
+# Recalibrated for the rebuilt v2 susceptibility map by
+# ml_models/calibrate_alert_threshold.py. The previous single 0.75 cutoff was tuned
+# against the old map, whose values clustered around a median of 0.57; on that map 0.75
+# flagged 13% of all terrain while the real landslides sat at a median of only 0.49, so
+# it was both noisy and pointed at the wrong ground.
+#
+# The v2 map is a calibrated probability with a median of 0.044. Cutoffs are now chosen
+# by selectivity - the share of terrain each one flags - and checked against how much of
+# the 279-point inventory they recover:
+#
+#   tier        flags % of terrain   cutoff   catches % of real landslides
+#   WATCH                     5.0%    0.374                        100.0%
+#   HIGH                      1.0%    0.619                         84.9%
+#   VERY HIGH                 0.2%    0.869                         32.6%
+SUSCEPTIBILITY_WATCH = 0.374
+SUSCEPTIBILITY_HIGH = 0.619
+SUSCEPTIBILITY_VERY_HIGH = 0.869
+
+# Share of a district's sampled area that must exceed SUSCEPTIBILITY_HIGH before the
+# district counts as exposed. A district *average* is the wrong statistic here: it is
+# dominated by the safe majority of terrain and would hide a genuinely dangerous 2%.
+DISTRICT_AREA_FRACTION = 0.02
+
+# Retained for the /alerts/status payload and any caller still reading it.
+SUSCEPTIBILITY_THRESHOLD = SUSCEPTIBILITY_HIGH
 RAINFALL_THRESHOLD_MM = 50.0
 
 # Zone codes from hazard_fused raster
@@ -88,9 +130,12 @@ class DistrictRiskAssessment(BaseModel):
     avg_soil_susceptibility: Optional[float] = None
     has_failure_zone: bool
     has_transit_zone: bool
-    rainfall_mm: float
+    rainfall_mm: Optional[float] = None
+    rainfall_degraded: bool = False
+    rainfall_note: Optional[str] = None
+    antecedent_15d_mm: Optional[float] = None
     alert_triggered: bool
-    risk_level: str  # "VERY HIGH", "HIGH", "MODERATE", "LOW"
+    risk_level: str  # "VERY HIGH", "HIGH", "MODERATE", "LOW", "UNKNOWN"
 
 class AlertStatus(BaseModel):
     district: str
@@ -141,11 +186,19 @@ def sample_points_in_polygon(polygon_geom, num_points: int = 50) -> List[tuple]:
 
 
 def get_susceptibility_at_points(points: List[tuple]) -> List[float]:
-    """Read DL susceptibility values at given lat/lon points."""
+    """Read susceptibility values at given lat/lon points.
+
+    Uses the RandomForest map rather than the CNN map. The CNN raster is produced by
+    strided inference and bilinear interpolation, which blurs the sharp hotspots that
+    matter for alerting: at a cutoff flagging 5% of terrain it recovered 59% of the
+    mapped inventory where the RandomForest map recovered 100%. Regenerating it at a
+    finer stride did not help - the smoothing is intrinsic to the CNN's 960 m receptive
+    field, not to the sampling. The CNN layer remains available for display.
+    """
     values = []
-    
+
     try:
-        with rasterio.open(RASTERS["susceptibility_dl"]) as src:
+        with rasterio.open(RASTERS["susceptibility_ml"]) as src:
             for lat, lon in points:
                 try:
                     # Transform to raster CRS if needed
@@ -233,33 +286,19 @@ def get_soil_susceptibility_at_points(points: List[tuple]) -> List[float]:
 
 
 def get_rainfall_for_location(lat: float, lon: float) -> float:
-    """Fetch rainfall data from OpenWeather API (current + forecast for 24h estimate)."""
-    api_key = os.environ.get("OPENWEATHER_API_KEY", "f4b4c6deaacfaacd2060175e4697b694")
-    
-    # Get current weather rainfall
-    current_rain = 0.0
-    try:
-        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
-        resp = requests.get(url, timeout=5)
-        resp.raise_for_status()
-        data = resp.json()
-        current_rain = data.get("rain", {}).get("1h", 0.0) * 24  # Extrapolate to 24h
-    except Exception as e:
-        logger.warning(f"Error fetching current weather: {e}")
-    
-    # Also try to get forecast for better 24h estimate
-    forecast_rain = 0.0
-    try:
-        url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric&cnt=8"
-        resp = requests.get(url, timeout=5)
-        resp.raise_for_status()
-        data = resp.json()
-        for item in data.get("list", []):
-            forecast_rain += item.get("rain", {}).get("3h", 0.0)
-    except Exception as e:
-        logger.warning(f"Error fetching forecast: {e}")
-    
-    return max(current_rain, forecast_rain)
+    """Removed. Use the `rainfall` module instead.
+
+    The previous implementation reported `rain["1h"] * 24` as a 24-hour total,
+    took max() of that against a forecast sum, fetched no antecedent history, and
+    returned 0.0 on any API failure - so an unreachable weather service was
+    indistinguishable from dry weather and alerts fell silent. It also carried a live
+    OpenWeather key as a literal default in source.
+    """
+    raise NotImplementedError(
+        "get_rainfall_for_location has been removed. "
+        "Use rainfall.get_rainfall() / rainfall.sample_area(), which return antecedent "
+        "windows and raise RainfallUnavailable instead of reporting 0.0 mm."
+    )
 
 
 def get_district_centroid(polygon_geom) -> tuple:
@@ -457,26 +496,65 @@ def check_all_districts():
         # Check hazard zones
         has_failure, has_transit = check_hazard_zones_at_points(points)
         
-        # Get rainfall
-        centroid = get_district_centroid(geometry)
-        rainfall = get_rainfall_for_location(centroid[0], centroid[1])
+        # Rainfall, sampled across the district rather than at its centroid: orographic
+        # gradients in the Ghats mean one flank can take 200 mm while the centroid stays
+        # dry. Alerting follows the wettest sample, not the average.
+        rain_degraded = False
+        rain_note = None
+        try:
+            observations = rainfall_source.sample_area(points[:RAINFALL_SAMPLE_POINTS])
+            worst = rainfall_source.worst_case(observations)
+            rainfall = worst.rain_24h
+            antecedent = worst.antecedent_mm
+            rain_degraded = worst.degraded or worst.is_stale
+            if rain_degraded:
+                rain_note = "; ".join(worst.notes) or "stale rainfall data"
+        except rainfall_source.RainfallUnavailable as exc:
+            # Never substitute 0.0 here. Zero is a real measurement meaning "dry", and
+            # treating a failed lookup as dry is what previously let the alert system
+            # fall silent whenever the weather API was unreachable.
+            logger.error("Rainfall unavailable for %s: %s", district_name, exc)
+            rainfall = None
+            antecedent = {}
+            rain_degraded = True
+            rain_note = f"rainfall unavailable: {exc}"
         
         # Determine if alert should trigger
         # Soil susceptibility > 0.6 means clay-rich soil prone to sliding
-        sus_exceeds = avg_sus >= SUSCEPTIBILITY_THRESHOLD or max_sus >= SUSCEPTIBILITY_THRESHOLD
-        rain_exceeds = rainfall >= RAINFALL_THRESHOLD_MM
+        #
+        # Exposure is the share of sampled points above the HIGH cutoff rather than the
+        # district average, which on a calibrated map is pulled down by the safe
+        # majority of terrain and never approaches a meaningful threshold.
+        exposed_fraction = (
+            sum(1 for v in sus_values if v >= SUSCEPTIBILITY_HIGH) / len(sus_values)
+            if sus_values else 0.0
+        )
+        sus_exceeds = (exposed_fraction >= DISTRICT_AREA_FRACTION
+                       or max_sus >= SUSCEPTIBILITY_VERY_HIGH)
         has_hazard = has_failure or has_transit
         soil_risky = avg_soil is not None and avg_soil >= 0.6
-        
+
         # Alert triggers when: high susceptibility + heavy rain + hazard zone
         # Soil data lowers the bar: if soil is risky, rainfall threshold drops to 30mm
-        if soil_risky:
-            rain_exceeds = rainfall >= (RAINFALL_THRESHOLD_MM * 0.6)  # 30mm if soil is risky
-        
+        rain_limit = (RAINFALL_THRESHOLD_MM * 0.6) if soil_risky else RAINFALL_THRESHOLD_MM
+        # Multi-day saturation is what actually primes these slopes, so a wet fortnight
+        # counts even when today alone is unremarkable.
+        antecedent_15d = antecedent.get("rain_15d")
+        rain_exceeds = (
+            rainfall is not None
+            and (rainfall >= rain_limit
+                 or (antecedent_15d is not None
+                     and antecedent_15d >= ANTECEDENT_15D_THRESHOLD_MM))
+        )
+
         alert_triggered = sus_exceeds and rain_exceeds and has_hazard
-        
+
         # Determine risk level (soil amplifies)
-        if alert_triggered:
+        if rainfall is None:
+            # Susceptibility is still known; the trigger side is not. Say so instead of
+            # reporting LOW, which would read as "safe".
+            risk_level = "UNKNOWN (rainfall unavailable)"
+        elif alert_triggered:
             risk_level = "VERY HIGH"
         elif sus_exceeds and has_hazard and soil_risky:
             risk_level = "HIGH"
@@ -494,7 +572,11 @@ def check_all_districts():
             avg_soil_susceptibility=round(avg_soil, 3) if avg_soil is not None else None,
             has_failure_zone=has_failure,
             has_transit_zone=has_transit,
-            rainfall_mm=round(rainfall, 1),
+            rainfall_mm=round(rainfall, 1) if rainfall is not None else None,
+            rainfall_degraded=rain_degraded,
+            rainfall_note=rain_note,
+            antecedent_15d_mm=(round(antecedent_15d, 1)
+                               if antecedent_15d is not None else None),
             alert_triggered=alert_triggered,
             risk_level=risk_level
         ))
