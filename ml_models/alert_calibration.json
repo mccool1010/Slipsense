@@ -1,0 +1,26 @@
+{
+  "new_map_median": 0.04321293346583843,
+  "new_map_p99": 0.6192039585113527,
+  "old_map_median": 0.5723708868026733,
+  "tiers": {
+    "WATCH": {
+      "threshold": 0.3744,
+      "flags_fraction_of_terrain": 0.05,
+      "recall_on_inventory": 100.0
+    },
+    "HIGH": {
+      "threshold": 0.6192,
+      "flags_fraction_of_terrain": 0.01,
+      "recall_on_inventory": 84.9
+    },
+    "VERY HIGH": {
+      "threshold": 0.8694,
+      "flags_fraction_of_terrain": 0.002,
+      "recall_on_inventory": 32.6
+    }
+  },
+  "stale_threshold_0_75": {
+    "flags_percent_terrain": 0.459,
+    "recall_on_inventory": 53.0
+  }
+}

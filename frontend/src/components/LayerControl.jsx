@@ -92,6 +92,33 @@ const LayerControl = ({ activeLayers, layerOpacity, onToggle, onOpacityChange, s
             )}
           </LayerRow>
 
+          {/* Conformal ambiguity: cells whose prediction set contains both labels at
+              alpha = 0.1, about a quarter of the grid. Offered as its own layer so a
+              viewer can see where the model declines to commit rather than reading a
+              confident-looking colour everywhere. */}
+          <LayerRow>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                className="form-checkbox"
+                type="checkbox"
+                checked={activeLayers.uncertainty}
+                onChange={() => onToggle("uncertainty")}
+              />
+              <span className="text-sm">Model Uncertainty</span>
+            </label>
+            {activeLayers.uncertainty && (
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={layerOpacity.uncertainty}
+                onChange={(e) => onOpacityChange("uncertainty", parseFloat(e.target.value))}
+                className="w-28"
+              />
+            )}
+          </LayerRow>
+
           <LayerRow>
             <label className="flex items-center gap-3 cursor-pointer">
               <input

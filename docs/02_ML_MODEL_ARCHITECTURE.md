@@ -1,5 +1,18 @@
 # SlipSense – ML/DL Model Architecture
 
+> [!WARNING]
+> **Some figures in this document are retracted.** Any mention of F1 0.832,
+> Accuracy 85.6%, ROC-AUC 0.958, or coverage of "all 14 districts" is invalid.
+> Those metrics came from a dataset with 550 of 800 rows fabricated and two features
+> derived from the label; the terrain rasters feeding them were also mislabelled
+> (`DEM_filled_75.tif` held slope, not elevation).
+>
+> Current, verified results: [MODEL_CARD.md](MODEL_CARD.md).
+> Key correction: the model is trained on one tile covering **2** Kerala districts,
+> and out of sample it does **not** beat relative relief alone.
+
+
+
 > Machine Learning and Deep Learning Pipeline for Landslide Susceptibility Prediction
 
 ---

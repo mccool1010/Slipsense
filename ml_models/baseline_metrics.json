@@ -1,0 +1,81 @@
+{
+  "inventory": [
+    {
+      "model": "Random scores",
+      "auc": 0.48243584229390685,
+      "pr_auc": 0.09398752088867013,
+      "n_features": 0
+    },
+    {
+      "model": "Slope only",
+      "auc": 0.6987440860215054,
+      "pr_auc": 0.24339688942277377,
+      "n_features": 1
+    },
+    {
+      "model": "Relative relief only",
+      "auc": 0.804904659498208,
+      "pr_auc": 0.31265225267991864,
+      "n_features": 1
+    },
+    {
+      "model": "Slope + relief",
+      "auc": 0.8507182795698925,
+      "pr_auc": 0.37990772145994145,
+      "n_features": 2
+    },
+    {
+      "model": "Full model (12 features)",
+      "auc": 0.8810609318996416,
+      "pr_auc": 0.5252836974628148,
+      "n_features": 12
+    }
+  ],
+  "independent": [
+    {
+      "map": "SlipSense v2 (ML)",
+      "n_events": 106,
+      "mean_percentile": 67.56252229522079,
+      "median_percentile": 70.73569142971698,
+      "pct_in_top20": 37.735849056603776,
+      "enrichment_top20": 1.89,
+      "wilcoxon_p": 9.888651047696477e-10
+    },
+    {
+      "map": "Slope raster alone",
+      "n_events": 106,
+      "mean_percentile": 68.6026923516512,
+      "median_percentile": 76.31416815420316,
+      "pct_in_top20": 46.22641509433962,
+      "enrichment_top20": 2.31,
+      "wilcoxon_p": 1.6302012229324817e-08
+    },
+    {
+      "map": "Relative relief alone",
+      "n_events": 106,
+      "mean_percentile": 70.11481405626903,
+      "median_percentile": 74.09291927781315,
+      "pct_in_top20": 45.28301886792453,
+      "enrichment_top20": 2.26,
+      "wilcoxon_p": 2.121510757067195e-11
+    },
+    {
+      "map": "GSI published susceptibility",
+      "n_events": 82,
+      "mean_percentile": 22.09874056005329,
+      "median_percentile": 0.0,
+      "pct_in_top20": 7.317073170731707,
+      "enrichment_top20": 0.37,
+      "wilcoxon_p": 0.9999999999945207
+    },
+    {
+      "map": "Pre-v2 deployed map",
+      "n_events": 9,
+      "mean_percentile": 37.28243828738606,
+      "median_percentile": 25.176228389532408,
+      "pct_in_top20": 11.11111111111111,
+      "enrichment_top20": 0.56,
+      "wilcoxon_p": null
+    }
+  ]
+}

@@ -26,6 +26,58 @@ def _normalize_rgb(arr):
     return stacked
 
 
+# Calibrated susceptibility class breaks, from ml_models/calibrate_alert_threshold.py.
+# These are the same cutoffs the alert system uses, so what a viewer sees and what
+# triggers an SMS cannot drift apart.
+#
+#   WATCH      0.446   flags  5% of terrain, contains 100% of the mapped inventory
+#   HIGH       0.704   flags  1% of terrain, contains  63%
+#   VERY HIGH  0.871   flags 0.2% of terrain, contains 21%
+SUSCEPTIBILITY_BREAKS = (0.446, 0.704, 0.871)
+
+
+def colorize_susceptibility(band):
+    """Colour a susceptibility probability raster with absolute class breaks.
+
+    Continuous layers were previously rendered with _normalize_band, which rescales
+    each tile to its own min and max. That makes the colours mean something different
+    in every tile - a quiet lowland tile is stretched to look as dangerous as a tile
+    full of failure zones - and it hides the real distribution, which is heavily skewed
+    toward zero. Fixed breaks keep one colour meaning one probability everywhere, and
+    keep the map consistent with the alert tiers.
+    """
+    h, w = band.shape
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+    low, high, very_high = SUSCEPTIBILITY_BREAKS
+
+    valid = np.isfinite(band)
+    # Below WATCH: faint, so safe ground recedes instead of competing for attention.
+    sel = valid & (band < low)
+    rgba[sel] = [30, 64, 120, 60]
+    sel = valid & (band >= low) & (band < high)
+    rgba[sel] = [250, 204, 21, 170]        # WATCH - amber
+    sel = valid & (band >= high) & (band < very_high)
+    rgba[sel] = [249, 115, 22, 200]        # HIGH - orange
+    sel = valid & (band >= very_high)
+    rgba[sel] = [220, 38, 38, 230]         # VERY HIGH - red
+    return rgba
+
+
+def colorize_uncertainty(band):
+    """Hatch-free shading for cells the model cannot call.
+
+    `uncertainty.tif` marks cells whose conformal prediction set contains both labels
+    at alpha = 0.1 - about a quarter of the grid. Showing them distinctly is more
+    honest than painting a single confident-looking number everywhere, and it matters
+    most on the nine extrapolated tiles the model was never trained on.
+    """
+    h, w = band.shape
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+    ambiguous = np.isfinite(band) & (band > 0.5)
+    rgba[ambiguous] = [148, 163, 184, 130]   # neutral slate, deliberately unalarming
+    return rgba
+
+
 def colorize_hazard(arr):
     """
     Colorize hazard_fused raster values.
@@ -127,6 +179,20 @@ def tile(layer: str, z: str, x: str, y: str, district: str = None):
                 # Special handling for hazard_fused: colorize based on values 0-3
                 band = data[:, :, 0].astype(np.uint8)
                 img_arr = colorize_hazard(band)
+                img = Image.fromarray(img_arr, mode="RGBA")
+            elif layer in ("susceptibility_ml", "susceptibility_dl"):
+                # Absolute class breaks, not per-tile normalisation - see
+                # colorize_susceptibility for why that distinction matters.
+                band = data[:, :, 0].astype(float)
+                img_arr = colorize_susceptibility(band)
+                # nan_to_num above turned nodata into 0, which would otherwise paint as
+                # "safe"; the tile mask is what actually distinguishes the two.
+                img_arr[mask == 0] = [0, 0, 0, 0]
+                img = Image.fromarray(img_arr, mode="RGBA")
+            elif layer == "uncertainty":
+                band = data[:, :, 0].astype(float)
+                img_arr = colorize_uncertainty(band)
+                img_arr[mask == 0] = [0, 0, 0, 0]
                 img = Image.fromarray(img_arr, mode="RGBA")
             elif data.shape[2] == 1:
                 band = data[:, :, 0]

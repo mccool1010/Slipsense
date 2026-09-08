@@ -1,0 +1,138 @@
+{
+  "sets": [
+    {
+      "features": "Terrain only",
+      "n_features": 12,
+      "auc": 0.8812043010752688,
+      "pr_auc": 0.5257583344171268,
+      "independent": {
+        "n_events": 9,
+        "mean_percentile": 51.26750665127253,
+        "pct_in_top20": 11.11111111111111,
+        "enrichment": 0.56
+      }
+    },
+    {
+      "features": "Terrain + soil",
+      "n_features": 15,
+      "auc": 0.8831240143369176,
+      "pr_auc": 0.5330793348535161,
+      "independent": {
+        "n_events": 9,
+        "mean_percentile": 52.72716117553224,
+        "pct_in_top20": 11.11111111111111,
+        "enrichment": 0.56
+      }
+    },
+    {
+      "features": "Terrain + land cover",
+      "n_features": 14,
+      "auc": 0.8932645161290322,
+      "pr_auc": 0.6242610848829016,
+      "independent": {
+        "n_events": 9,
+        "mean_percentile": 54.3781269347255,
+        "pct_in_top20": 22.22222222222222,
+        "enrichment": 1.11
+      }
+    },
+    {
+      "features": "Terrain + road",
+      "n_features": 13,
+      "auc": 0.8832186379928316,
+      "pr_auc": 0.5050511945697179,
+      "independent": {
+        "n_events": 9,
+        "mean_percentile": 55.45739002392785,
+        "pct_in_top20": 11.11111111111111,
+        "enrichment": 0.56
+      }
+    },
+    {
+      "features": "Everything available",
+      "n_features": 18,
+      "auc": 0.8959856630824373,
+      "pr_auc": 0.624775286467756,
+      "independent": {
+        "n_events": 9,
+        "mean_percentile": 55.14225635705481,
+        "pct_in_top20": 22.22222222222222,
+        "enrichment": 1.11
+      }
+    }
+  ],
+  "importance": [
+    {
+      "feature": "forest_fraction",
+      "importance": 0.1946030653959869
+    },
+    {
+      "feature": "relative_relief",
+      "importance": 0.16568320790508972
+    },
+    {
+      "feature": "elevation",
+      "importance": 0.052875171064985335
+    },
+    {
+      "feature": "drainage_density",
+      "importance": 0.05074782615851035
+    },
+    {
+      "feature": "soil_sand",
+      "importance": 0.01889988638366378
+    },
+    {
+      "feature": "soil_clay",
+      "importance": 0.018538239278400325
+    },
+    {
+      "feature": "dist_road",
+      "importance": 0.015508850989643618
+    },
+    {
+      "feature": "soil_index",
+      "importance": 0.014771863896837966
+    },
+    {
+      "feature": "twi",
+      "importance": 0.006559307932586711
+    },
+    {
+      "feature": "aspect_east",
+      "importance": 0.006397617781142706
+    },
+    {
+      "feature": "slope",
+      "importance": 0.005217770907053709
+    },
+    {
+      "feature": "plan_curvature",
+      "importance": 0.0009829283739339223
+    },
+    {
+      "feature": "flow_acc",
+      "importance": 0.0003619069891820259
+    },
+    {
+      "feature": "bare_fraction",
+      "importance": 0.0
+    },
+    {
+      "feature": "dist_river",
+      "importance": -0.0008447235385785845
+    },
+    {
+      "feature": "profile_curvature",
+      "importance": -0.006511241099148335
+    },
+    {
+      "feature": "aspect_north",
+      "importance": -0.00796198702833223
+    },
+    {
+      "feature": "spi",
+      "importance": -0.01379664699383717
+    }
+  ]
+}
