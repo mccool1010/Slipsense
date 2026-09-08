@@ -93,7 +93,12 @@ const MapView = ({
   React.useEffect(() => {
     const loadRunoutGeoJSON = async () => {
       try {
-        const response = await fetch(`${TILE_SERVER}/rasters/runout_paths.geojson`);
+        // The v2 corridors. `/rasters/runout_paths.geojson` still resolves to the
+        // pre-rebuild file, which was produced by routing debris across a slope
+        // raster mistaken for a DEM.
+        const response = await fetch(
+          `${TILE_SERVER}/rasters/v2/runout_paths_exposed.geojson`
+        );
         const data = await response.json();
         console.log("Runout GeoJSON loaded successfully, features:", data.features.length);
         setRunoutGeoJSON(data);
@@ -255,10 +260,12 @@ const MapView = ({
                   `Drop ${p.drop_m ?? "?"} m<br/>` +
                   `Max velocity ${p.max_velocity_ms ?? "?"} m/s<br/>` +
                   `Reach angle ${p.reach_angle_deg ?? "?"}°` +
-                  (p.buildings_at_risk != null
-                    ? `<br/>Buildings at risk ${p.buildings_at_risk}` +
-                      `<br/>Road at risk ${p.road_km_at_risk ?? 0} km`
-                    : ""),
+                  // Most centrelines threaten nothing; saying "0 buildings" on every
+                  // one of them is noise, so exposure only appears where it exists.
+                  (p.buildings_at_risk > 0
+                    ? `<br/>Buildings at risk ${p.buildings_at_risk}` : "") +
+                  (p.road_km_at_risk > 0
+                    ? `<br/>Road at risk ${p.road_km_at_risk} km` : ""),
                   { sticky: true }
                 );
                 layer.on({

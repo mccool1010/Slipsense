@@ -119,7 +119,9 @@ const CesiumView = ({ lat, lon, onClose }) => {
 
         // Runout corridors, drawn as ground-clamped lines coloured by modelled velocity.
         try {
-          const res = await fetch(`${TILE_SERVER}/rasters/runout_paths.geojson`);
+          const res = await fetch(
+            `${TILE_SERVER}/rasters/v2/runout_paths_exposed.geojson`
+          );
           if (res.ok) {
             const geo = await res.json();
             let drawn = 0;
