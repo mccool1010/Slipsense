@@ -9,8 +9,9 @@ importantly — what it has not.
 
 **One-line summary:** the susceptibility product is genuinely good — independent,
 well-located landslide scars land in its top quintile at **3.7× chance** (p = 2e-13) —
-but the *machine learning* does not beat a plain slope raster out of sample, so the
-defensible claim is about the map, not about the model class.
+but the *machine learning* performs no better than a plain slope raster out of sample
+(paired p = 0.647, ML ahead on 21 of 42 scars), so the defensible claim is about the
+map, not about the model class.
 
 ---
 
@@ -73,9 +74,15 @@ split puts near-identical neighbouring cells in both train and test.
 
 | Model | AUC | PR-AUC | Precision | Recall | F1 |
 |---|---|---|---|---|---|
-| Patch CNN | 0.896 | 0.593 | 0.556 | 0.556 | 0.556 |
-| RandomForest | 0.881 | 0.526 | 0.600 | 0.473 | 0.529 |
-| XGBoost | 0.877 | 0.510 | 0.560 | 0.452 | 0.500 |
+| **RandomForest** (17 features, deployed) | **0.895** | **0.636** | 0.645 | 0.541 | 0.589 |
+| XGBoost | 0.892 | 0.609 | 0.689 | 0.470 | 0.559 |
+| LightGBM | 0.882 | 0.599 | 0.574 | 0.530 | 0.551 |
+| Patch CNN (terrain only, display layer) | 0.896 | 0.593 | 0.556 | 0.556 | 0.556 |
+
+`forest_fraction` is the highest-importance feature (+0.213), ahead of relative relief
+(+0.202). Vegetation is signal a DEM structurally cannot contain: two identical
+hillsides differ if one has been cleared. Landslide sites average 0.57 forest cover
+against 0.84 for background.
 
 Rainfall trigger model, grouped by location: **AUC 0.756**. Mean 3-day antecedent
 rainfall is 79 mm before failures against 30 mm on non-event days.
@@ -91,8 +98,8 @@ ambiguous prediction set — cases the model cannot call at that confidence.
 Two independent tests disagree, and the disagreement is the most important thing in this
 card.
 
-**Predicting the training inventory**, the full 12-feature model is clearly best:
-AUC 0.881 / PR-AUC 0.525, against 0.805 / 0.313 for relative relief alone.
+**Predicting the training inventory**, the full model is clearly best:
+AUC 0.895 / PR-AUC 0.636, against 0.805 / 0.313 for relative relief alone.
 
 **Ranking 106 independent NASA catalog events**, it is not:
 
@@ -119,7 +126,7 @@ and produced by satellite observation rather than by anyone deciding where to wa
 
 | Map | NASA catalog (±5–50 km) | Sentinel scars (10 m) |
 |---|---|---|
-| SlipSense v2 (ML) | 67.6% / 1.89× | **84.9% / 3.69×** |
+| SlipSense v2 (ML, with land cover) | 67.6% / 1.89× | **87.4% / 3.69×** |
 | Slope alone | 68.6% / 2.31× | **88.0% / 4.05×** |
 | Relative relief alone | 70.1% / 2.26× | **86.8% / 4.05×** |
 
@@ -128,18 +135,32 @@ The catalog's coordinate error *was* suppressing the measurement: all three maps
 (p = 2e-13). The susceptibility surface is considerably better than the earlier figure
 implied.
 
-**But the ranking did not change.** Slope alone still scores highest. Removing the noise
-lifted all three maps together rather than revealing a hidden ML advantage.
+**But the ML still shows no advantage.** Adding land cover lifted the model from 84.9%
+to 87.4% and gave it the best median of the three (91.5% against 89.8%), which closed
+almost all of the gap. Paired on the same scars, however, the remaining difference is
+noise:
+
+    mean difference (ML − slope):  −0.54 percentile points
+    paired Wilcoxon:               p = 0.647
+    ML ranks higher on:            21 of 42 scars
+
+Twenty-one of forty-two is a coin flip. Slope retains an edge only on top-quintile
+enrichment (4.05× against 3.69×).
 
 A separate probe also ruled out the most obvious bias mechanism: landslides sit *farther*
 from roads than background samples (1,821 m vs 915 m), and `dist_road` ranks 10th of 16
 by permutation importance — the inventory is not a record of where somebody drove.
-Adding real soil (SoilGrids 250 m), land cover and roads moved AUC by 0.005 and did not
-improve PR-AUC at all.
 
-**Standing conclusion: the map is trustworthy and useful; the machine learning is not yet
-justified over a slope-and-relief index, which would be simpler and more transparent.**
-Caveat: n = 42, and the scars are unverified candidates.
+Land cover, by contrast, mattered a great deal on the inventory: PR-AUC rose from 0.526
+to 0.636 (+21%). Note the asymmetry — that gain is clear when predicting the training
+inventory and largely absent out of sample, which is precisely the pattern this section
+is about.
+
+**Standing conclusion: the map is trustworthy and useful; the machine learning has not
+yet demonstrated an advantage over a slope-and-relief index, which would be simpler and
+more transparent.** That is weaker than saying it loses — with n = 42 the test cannot
+resolve a difference of half a percentile point — but the burden of proof sits with the
+model, and it has not met it. Caveat: the scars are unverified candidates.
 
 ---
 
