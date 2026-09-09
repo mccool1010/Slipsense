@@ -11,9 +11,24 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
+# rasterio's manylinux wheel bundles GDAL and 27 other libraries, but not quite
+# everything: the bundled libgdal still dynamically links libexpat, which python:slim
+# does not ship. The image then builds cleanly and dies on first import with
+#
+#   ImportError: libexpat.so.1: cannot open shared object file
+#
+# which is an unhelpful failure, because nothing in the build log hints at it.
+#
+# Determined by reading the wheel rather than by guessing: of the 64 shared libraries
+# the bundled GDAL references, the only one absent from both the wheel and a slim image
+# is libexpat.so.1. The rest - libdl, libm, libgcc_s, libpthread, libstdc++ - already
+# come with the Python base image.
+#
 # curl is only for the container healthcheck below.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
+ && apt-get install -y --no-install-recommends \
+      curl \
+      libexpat1 \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
