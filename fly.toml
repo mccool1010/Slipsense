@@ -1,0 +1,50 @@
+# Fly.io configuration for the SlipSense backend.
+#
+# Chosen over Render's free tier because that one sleeps after inactivity, and a cold
+# start on a tile request means the map appears broken for the first thirty seconds -
+# which, on this project, is a failure mode we have already spent enough time on.
+
+app = "slipsense"
+primary_region = "bom"   # Mumbai: closest region to Kerala, so tile latency is lowest
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  SLIPSENSE_RASTER_DIR = "/app/deploy/rasters"
+  PORT = "8000"
+  # Alerting can send real SMS. Left off until deliberately enabled with real
+  # credentials via `fly secrets set`.
+  DRY_RUN = "true"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Keeping one machine warm costs a little but avoids cold-start latency on the first
+  # tile of every session.
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    # A map view fires a grid of tile requests at once; a low soft limit would queue
+    # them behind each other for no reason.
+    soft_limit = 40
+    hard_limit = 60
+
+[[http_service.checks]]
+  grace_period = "45s"
+  interval = "30s"
+  method = "GET"
+  timeout = "10s"
+  # /health verifies dependencies and that every configured raster resolved, so a
+  # machine with a broken bundle is marked unhealthy rather than serving empty tiles.
+  path = "/health"
+
+[[vm]]
+  # rasterio holds decompressed blocks while rendering; 512 MB is comfortable for the
+  # bundle's 512x512 tiled COGs and leaves room for a few concurrent requests.
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

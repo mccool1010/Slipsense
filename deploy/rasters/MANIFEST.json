@@ -1,0 +1,84 @@
+{
+  "built": "2026-09-09",
+  "layers": [
+    {
+      "layer": "susceptibility_ml",
+      "mb_before": 57.0,
+      "mb_after": 11.0,
+      "quantised": true,
+      "scale": 0.003936061708945927,
+      "offset": 0.0
+    },
+    {
+      "layer": "susceptibility_dl",
+      "mb_before": 58.6,
+      "mb_after": 5.3,
+      "quantised": true,
+      "scale": 0.003929874363151841,
+      "offset": 0.0006617209292016923
+    },
+    {
+      "layer": "uncertainty",
+      "mb_before": 1.5,
+      "mb_after": 3.4,
+      "quantised": true,
+      "scale": 0.003937007874015748,
+      "offset": 0.0
+    },
+    {
+      "layer": "hazard_fused",
+      "mb_before": 0.2,
+      "mb_after": 0.3,
+      "quantised": false,
+      "scale": 1.0,
+      "offset": 0.0
+    },
+    {
+      "layer": "transit",
+      "mb_before": 0.2,
+      "mb_after": 1.0,
+      "quantised": false,
+      "scale": 1.0,
+      "offset": 0.0
+    },
+    {
+      "layer": "deposition",
+      "mb_before": 0.1,
+      "mb_after": 0.7,
+      "quantised": false,
+      "scale": 1.0,
+      "offset": 0.0
+    },
+    {
+      "layer": "runout_velocity",
+      "mb_before": 1.7,
+      "mb_after": 2.4,
+      "quantised": false,
+      "scale": 1.0,
+      "offset": 0.0
+    },
+    {
+      "layer": "historical_susceptibility",
+      "mb_before": 5.7,
+      "mb_after": 3.3,
+      "quantised": false,
+      "scale": 1.0,
+      "offset": 0.0
+    },
+    {
+      "layer": "soil_susceptibility",
+      "mb_before": 51.6,
+      "mb_after": 0.7,
+      "quantised": true,
+      "scale": 0.0033272133157478544,
+      "offset": 0.047704778611660004
+    }
+  ],
+  "total_mb_before": 180.7,
+  "total_mb_after": 32.1,
+  "excluded": {
+    "backend/rasters/tiles": "per-tile Kerala predictions, validation only",
+    "data/dem": "source DEMs, not served",
+    "*_legacy": "superseded rasters, kept locally for the comparison figure"
+  }
+}

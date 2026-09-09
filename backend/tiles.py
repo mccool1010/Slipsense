@@ -41,6 +41,7 @@ def _normalize_rgb(arr):
 # made rendering a PNG depend on shapely, rasterio and requests, so a missing shapely
 # install brought down the whole tile server.
 from thresholds import SUSCEPTIBILITY_BREAKS
+from rasterscale import to_physical
 
 
 def colorize_susceptibility(band):
@@ -189,15 +190,17 @@ def tile(layer: str, z: str, x: str, y: str, district: str = None):
                 img = Image.fromarray(img_arr, mode="RGBA")
             elif layer in ("susceptibility_ml", "susceptibility_dl"):
                 # Absolute class breaks, not per-tile normalisation - see
-                # colorize_susceptibility for why that distinction matters.
-                band = data[:, :, 0].astype(float)
+                # colorize_susceptibility for why that distinction matters. The
+                # deployment bundle stores these quantised, so undo that first or every
+                # pixel compares as VERY HIGH against a 0-1 threshold.
+                band = to_physical(cog.dataset, data[:, :, 0])
                 img_arr = colorize_susceptibility(band)
                 # nan_to_num above turned nodata into 0, which would otherwise paint as
                 # "safe"; the tile mask is what actually distinguishes the two.
                 img_arr[mask == 0] = [0, 0, 0, 0]
                 img = Image.fromarray(img_arr, mode="RGBA")
             elif layer == "uncertainty":
-                band = data[:, :, 0].astype(float)
+                band = to_physical(cog.dataset, data[:, :, 0])
                 img_arr = colorize_uncertainty(band)
                 img_arr[mask == 0] = [0, 0, 0, 0]
                 img = Image.fromarray(img_arr, mode="RGBA")

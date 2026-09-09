@@ -4,3 +4,11 @@
 *.pyd filter=lfs diff=lfs merge=lfs -text
 *.whl filter=lfs diff=lfs merge=lfs -text
 *.pth filter=lfs diff=lfs merge=lfs -text
+
+# The deployment bundle is deliberately NOT in LFS. Build platforms (Fly, Render,
+# Railway) clone without pulling LFS by default, which would give the container 130-byte
+# pointer files where it expects rasters - and the failure appears at runtime as empty
+# tiles rather than at build time. 33 MB as plain git objects is a fair price for a
+# clone that always works.
+deploy/rasters/** -filter -diff -merge text=auto
+deploy/rasters/*.tif !filter !diff !merge

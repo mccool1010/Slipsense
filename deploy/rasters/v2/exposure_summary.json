@@ -1,0 +1,269 @@
+{
+  "osm_buildings_mapped": 8756,
+  "osm_road_segments": 4462,
+  "buildings_in_corridors": 19,
+  "road_km_in_corridors": 36.3,
+  "boxes_queried": 12,
+  "boxes_total": 60,
+  "corridors": 395,
+  "top_centrelines": [
+    {
+      "path_index": 0,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 150.0,
+      "max_velocity_ms": 8.3
+    },
+    {
+      "path_index": 1,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 540.0,
+      "max_velocity_ms": 21.1
+    },
+    {
+      "path_index": 2,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 510.0,
+      "max_velocity_ms": 21.1
+    },
+    {
+      "path_index": 3,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 300.0,
+      "max_velocity_ms": 19.6
+    },
+    {
+      "path_index": 4,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 180.0,
+      "max_velocity_ms": 10.0
+    },
+    {
+      "path_index": 5,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 240.0,
+      "max_velocity_ms": 10.3
+    },
+    {
+      "path_index": 6,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 570.0,
+      "max_velocity_ms": 21.1
+    },
+    {
+      "path_index": 7,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 570.0,
+      "max_velocity_ms": 23.8
+    },
+    {
+      "path_index": 8,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 870.0,
+      "max_velocity_ms": 21.4
+    },
+    {
+      "path_index": 9,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 900.0,
+      "max_velocity_ms": 22.3
+    },
+    {
+      "path_index": 10,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 690.0,
+      "max_velocity_ms": 23.8
+    },
+    {
+      "path_index": 11,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 300.0,
+      "max_velocity_ms": 21.1
+    },
+    {
+      "path_index": 12,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 960.0,
+      "max_velocity_ms": 23.4
+    },
+    {
+      "path_index": 13,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 150.0,
+      "max_velocity_ms": 14.5
+    },
+    {
+      "path_index": 14,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.0,
+      "length_m": 390.0,
+      "max_velocity_ms": 15.8
+    }
+  ],
+  "exposed_corridors": [
+    {
+      "corridor_id": 3557,
+      "buildings_at_risk": 6,
+      "road_km_at_risk": 1.05,
+      "area_ha": 62.55
+    },
+    {
+      "corridor_id": 4469,
+      "buildings_at_risk": 3,
+      "road_km_at_risk": 0.0,
+      "area_ha": 4.68
+    },
+    {
+      "corridor_id": 4740,
+      "buildings_at_risk": 2,
+      "road_km_at_risk": 0.39,
+      "area_ha": 37.71
+    },
+    {
+      "corridor_id": 3426,
+      "buildings_at_risk": 2,
+      "road_km_at_risk": 0.06,
+      "area_ha": 12.15
+    },
+    {
+      "corridor_id": 3271,
+      "buildings_at_risk": 1,
+      "road_km_at_risk": 2.1,
+      "area_ha": 73.98
+    },
+    {
+      "corridor_id": 3501,
+      "buildings_at_risk": 1,
+      "road_km_at_risk": 0.51,
+      "area_ha": 37.71
+    },
+    {
+      "corridor_id": 4709,
+      "buildings_at_risk": 1,
+      "road_km_at_risk": 0.45,
+      "area_ha": 14.13
+    },
+    {
+      "corridor_id": 3873,
+      "buildings_at_risk": 1,
+      "road_km_at_risk": 0.15,
+      "area_ha": 11.79
+    },
+    {
+      "corridor_id": 3961,
+      "buildings_at_risk": 1,
+      "road_km_at_risk": 0.06,
+      "area_ha": 0.18
+    },
+    {
+      "corridor_id": 3986,
+      "buildings_at_risk": 1,
+      "road_km_at_risk": 0.03,
+      "area_ha": 0.27
+    },
+    {
+      "corridor_id": 3956,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 4.11,
+      "area_ha": 598.41
+    },
+    {
+      "corridor_id": 4173,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 1.11,
+      "area_ha": 47.16
+    },
+    {
+      "corridor_id": 3567,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 1.08,
+      "area_ha": 58.77
+    },
+    {
+      "corridor_id": 3384,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.99,
+      "area_ha": 34.92
+    },
+    {
+      "corridor_id": 4530,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.99,
+      "area_ha": 37.44
+    },
+    {
+      "corridor_id": 4318,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.96,
+      "area_ha": 16.92
+    },
+    {
+      "corridor_id": 3813,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.84,
+      "area_ha": 31.05
+    },
+    {
+      "corridor_id": 4466,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.81,
+      "area_ha": 27.72
+    },
+    {
+      "corridor_id": 3368,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.75,
+      "area_ha": 30.78
+    },
+    {
+      "corridor_id": 3823,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.72,
+      "area_ha": 31.05
+    },
+    {
+      "corridor_id": 4068,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.72,
+      "area_ha": 16.38
+    },
+    {
+      "corridor_id": 4320,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.69,
+      "area_ha": 12.33
+    },
+    {
+      "corridor_id": 3491,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.66,
+      "area_ha": 28.08
+    },
+    {
+      "corridor_id": 4300,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.63,
+      "area_ha": 140.85
+    },
+    {
+      "corridor_id": 4636,
+      "buildings_at_risk": 0,
+      "road_km_at_risk": 0.6,
+      "area_ha": 12.06
+    }
+  ],
+  "n_exposed_corridors": 162
+}
