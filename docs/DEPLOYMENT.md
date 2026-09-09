@@ -61,7 +61,7 @@ The following problems must be fixed in the Launch UI:
 Render's free instance still needs no card and builds the same Dockerfile.
 
 1. render.com → **New** → **Blueprint**
-2. Connect `mccool1010/Slipsense`, branch `rebuild/honest-pipeline`
+2. Connect `mccool1010/Slipsense`, branch `main`
 3. Render reads `render.yaml`; approve the plan
 4. Add `OPENWEATHER_API_KEY` in the dashboard (it is marked `sync: false`, so it is
    never committed)

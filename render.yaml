@@ -24,7 +24,10 @@ services:
     dockerContext: .
     plan: free
     region: singapore
-    branch: rebuild/honest-pipeline
+    # Tracks main. The work originally landed on rebuild/honest-pipeline; pointing a
+    # deployment at a feature branch means deleting that branch silently detaches the
+    # service from any future commit.
+    branch: main
     healthCheckPath: /health
     envVars:
       - key: SLIPSENSE_RASTER_DIR
