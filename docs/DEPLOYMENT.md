@@ -1,6 +1,8 @@
 # Deploying SlipSense
 
-Backend on Fly.io, frontend on Vercel. Both free tiers are sufficient.
+Backend on Render, frontend on Vercel. Neither requires a payment method.
+Fly.io config is kept too, for when a card is available - it gives a warmer machine
+nearer to Kerala.
 
 ## What actually gets deployed
 
@@ -85,9 +87,9 @@ fly launch --no-deploy          # keeps the committed fly.toml
 fly deploy
 ```
 
-`fly.toml` sets Mumbai (`bom`) as the primary region, which is the closest to Kerala and
-therefore the lowest tile latency, and keeps one machine warm — a cold start on the
-first tile request makes the map look broken for thirty seconds.
+`fly.toml` uses Singapore (`sin`), the closest region Fly still offers to Kerala —
+Mumbai (`bom`) was retired and naming it aborts `fly launch` outright. It keeps one
+machine warm, because a cold start on the first tile request makes the map look broken.
 
 Secrets, none of which belong in the image:
 
@@ -114,7 +116,7 @@ the size, and there is no chance of a system GDAL disagreeing with the wheel's.
 Import the repository, set the root directory to `frontend/`, and add:
 
 ```
-VITE_TILE_SERVER=https://<your-app>.fly.dev
+VITE_TILE_SERVER=https://<service>.onrender.com
 VITE_CESIUM_ION_TOKEN=<token>
 ```
 
