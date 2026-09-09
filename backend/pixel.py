@@ -8,6 +8,26 @@ import time
 
 import requests
 from config import RASTERS
+from thresholds import (SUSCEPTIBILITY_HIGH, SUSCEPTIBILITY_VERY_HIGH,
+                        SUSCEPTIBILITY_WATCH)
+
+
+def susceptibility_class(value):
+    """Name the calibrated tier a probability falls in.
+
+    A bare 0.891 means nothing to a reader without the calibration table in front of
+    them. The tiers are what the alert system acts on, so the readout should speak the
+    same language: these cutoffs flag 5%, 1% and 0.2% of terrain respectively.
+    """
+    if value is None:
+        return None
+    if value >= SUSCEPTIBILITY_VERY_HIGH:
+        return "VERY HIGH"
+    if value >= SUSCEPTIBILITY_HIGH:
+        return "HIGH"
+    if value >= SUSCEPTIBILITY_WATCH:
+        return "WATCH"
+    return "LOW"
 
 def sample_one(src, lon_in, lat_in):
     """Read a single cell without decompressing the whole raster.
@@ -188,6 +208,9 @@ def pixel_info(
             "longitude": lon,
             "zone": zone,
             "susceptibility": round(sus, 3),
+            # The calibrated tier this probability falls in, so the number is readable
+            # without the calibration table to hand and matches what alerting acts on.
+            "susceptibility_class": susceptibility_class(sus),
             "historical_susceptibility": historical_sus,
             "historical_risk_class": historical_class,
             "soil_susceptibility": soil_sus,

@@ -7,6 +7,8 @@ import {
   Rectangle,
   useMapEvents,
   ZoomControl,
+  ScaleControl,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,6 +40,44 @@ function MapHoverHandler({ onHover }) {
       onHover(null);
     },
   });
+  return null;
+}
+
+/* ================================
+   Basemaps
+================================ */
+// A susceptibility ramp reads very differently over satellite imagery than over a plain
+// canvas; offering the choice costs nothing and makes the overlays legible in both.
+const BASEMAPS = {
+  satellite: {
+    label: "Satellite",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "© Esri",
+  },
+  terrain: {
+    label: "Terrain",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}",
+    attribution: "© Esri",
+  },
+  streets: {
+    label: "Streets",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "© OpenStreetMap contributors",
+  },
+};
+
+/* ================================
+   Zoom tracker
+================================ */
+// Corridors are 395 polylines with an animated dash pattern. Drawn at regional zoom
+// they collapse into illegible specks and still cost a full redraw every 90 ms, so the
+// layer is hidden until the view is close enough for it to mean anything.
+function ZoomWatcher({ onZoom }) {
+  const map = useMap();
+  useMapEvents({
+    zoomend: () => onZoom(map.getZoom()),
+  });
+  React.useEffect(() => { onZoom(map.getZoom()); }, [map, onZoom]);
   return null;
 }
 
@@ -81,7 +121,13 @@ const MapView = ({
   // transparent, which is indistinguishable from a broken layer unless the extent is
   // shown and the view starts inside it.
   const [coverage, setCoverage] = useState(null);
-  const runoutAnimating = Boolean(activeLayers.runout);
+  const [basemap, setBasemap] = useState("satellite");
+  const [zoom, setZoom] = useState(11);
+  const [cursor, setCursor] = useState(null);
+  // Below this the corridors are sub-pixel; see ZoomWatcher.
+  const RUNOUT_MIN_ZOOM = 11;
+  const runoutVisible = Boolean(activeLayers.runout) && zoom >= RUNOUT_MIN_ZOOM;
+  const runoutAnimating = runoutVisible;
   const hoverTimeoutRef = useRef(null);
   const mapContainerRef = useRef(null);
   const [map, setMap] = React.useState(null);
@@ -152,6 +198,7 @@ const MapView = ({
   };
 
   const handleHover = (coords) => {
+    setCursor(coords);
     if (!coords) {
       setHoverInfo(null);
       return;
@@ -205,6 +252,38 @@ const MapView = ({
       style={{ height: "100%", width: "100%", position: "relative" }}
       onMouseMove={handleMapMouseMove}
     >
+      {/* Basemap switcher, coordinate readout and a caption naming the modelled area.
+          Without the caption, transparent-because-out-of-coverage is impossible to
+          tell apart from transparent-because-broken. */}
+      <div className="map-hud">
+        <div className="map-hud-row">
+          {Object.entries(BASEMAPS).map(([key, cfg]) => (
+            <button
+              key={key}
+              type="button"
+              className={`map-hud-btn${basemap === key ? " is-active" : ""}`}
+              onClick={() => setBasemap(key)}
+            >
+              {cfg.label}
+            </button>
+          ))}
+        </div>
+        <div className="map-hud-meta">
+          {cursor
+            ? `${cursor.lat.toFixed(4)}, ${cursor.lon.toFixed(4)}`
+            : "move over the map"}
+          {"  ·  z"}{zoom}
+        </div>
+        {coverage && (
+          <div className="map-hud-meta">
+            Modelled area: Kasaragod &amp; Kannur + Karnataka Ghats
+            {activeLayers.runout && zoom < RUNOUT_MIN_ZOOM
+              ? `  ·  zoom in to z${RUNOUT_MIN_ZOOM} for corridors`
+              : ""}
+          </div>
+        )}
+      </div>
+
       <MapContainer
         center={[12.5, 75.0]}
         zoom={11}
@@ -220,9 +299,13 @@ const MapView = ({
 
         {/* Base map */}
         <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-          attribution="© Esri"
+          key={basemap}
+          url={BASEMAPS[basemap].url}
+          attribution={BASEMAPS[basemap].attribution}
         />
+
+        <ScaleControl position="bottomleft" imperial={false} />
+        <ZoomWatcher onZoom={setZoom} />
 
         {/* Optional Streets overlay (OpenStreetMap) */}
         {activeLayers.streets && (
@@ -278,7 +361,7 @@ const MapView = ({
         )}
 
         {/* Runout paths */}
-        {activeLayers.runout && runoutGeoJSON && (
+        {runoutVisible && runoutGeoJSON && (
           <>
             {console.log("Rendering runout paths, feature count:", runoutGeoJSON.features.length)}
             <GeoJSON
