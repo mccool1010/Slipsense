@@ -44,7 +44,40 @@ Then commit `deploy/rasters/`. It is deliberately **excluded from Git LFS**
 files where the container expects rasters fail at runtime as empty tiles rather than at
 build time.
 
-## Backend — Fly.io
+## Backend — Render (no payment method required)
+
+Fly.io was the first choice, but it now refuses to place a machine without a card on
+file:
+
+```
+The following problems must be fixed in the Launch UI:
+ * failed to determine region: failed to get placements:
+   requested machine count exceeds organization limit
+! You'll need to add a payment method in order to proceed.
+```
+
+Render's free instance still needs no card and builds the same Dockerfile.
+
+1. render.com → **New** → **Blueprint**
+2. Connect `mccool1010/Slipsense`, branch `rebuild/honest-pipeline`
+3. Render reads `render.yaml`; approve the plan
+4. Add `OPENWEATHER_API_KEY` in the dashboard (it is marked `sync: false`, so it is
+   never committed)
+
+Then check `https://<service>.onrender.com/health` for `"ok":true`.
+
+**The free instance sleeps after ~15 minutes idle** and takes 30-60 seconds to wake. The
+first map load after a quiet period shows empty tiles until the container is up - which
+looks identical to the coverage bug this project already has history with. Before
+showing it to anyone, open `/health` and wait for a response.
+
+### Alternative: Hugging Face Spaces
+
+Also free and card-free, with more memory and no sleep, but it deploys from a separate
+Hugging Face git repository rather than from GitHub, so it needs its own push. Worth it
+if the sleep is a problem.
+
+## Backend — Fly.io (needs a payment method)
 
 ```bash
 fly auth login
@@ -96,9 +129,6 @@ at build time; that is inherent to a browser-side key, not a mistake. Restrict i
 Cesium Ion console to the assets actually used rather than relying on it staying secret.
 
 ## Alternatives
-
-**Render** works with the same Dockerfile, but its free tier sleeps after inactivity and
-the cold start shows up as a broken-looking map.
 
 **Railway** also works and does not sleep, but has no Indian region, so tiles are served
 from further away.
