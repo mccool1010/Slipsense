@@ -1,0 +1,52 @@
+# Keep the build context small. The repository is ~123 MB with LFS objects and the
+# generated raster stack is several GB; the image needs neither. Only the 33 MB deploy
+# bundle, the district boundaries and backend/ are copied in.
+
+.git
+.gitattributes
+
+# Generated rasters. deploy/rasters is the served bundle and IS needed; everything else
+# here is development or validation output.
+backend/rasters/v2
+backend/rasters/tiles
+backend/rasters/districts
+backend/rasters/*.tif
+backend/rasters/*.xml
+backend/rasters/backup_before_fix
+backend/terrain_tiles
+data
+*.tif
+*.tiff
+*.sdat
+*.sgrd
+*.mgrd
+*.prj
+*.shp
+*.shx
+*.dbf
+*.cpg
+*.qgz
+!deploy/rasters/**
+!Kerala_District_Boundary.geojson
+
+# Python environments and caches
+**/.venv
+**/my_venv_3_12
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+
+# Frontend is deployed separately as a static build
+frontend
+node_modules
+
+# Research and docs, not needed at runtime
+ml_models
+docs
+tests
+svgs
+*.md
+!docs/DEPLOYMENT.md
+
+# Local secrets
+**/.env

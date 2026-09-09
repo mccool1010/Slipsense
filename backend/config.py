@@ -1,8 +1,30 @@
+import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent
 
-# Point to the existing rasters directory. Adjust filenames if necessary.
+# Where the served rasters live.
+#
+# Development reads the full float32 stack in backend/rasters/v2/. Deployment reads the
+# bundle built by ml_models/build_deploy_bundle.py: the same layers as Cloud-Optimised
+# GeoTIFFs with overviews, quantised where the values allow it, which takes 181 MB down
+# to 32 MB and makes low-zoom tiles cheap to serve. Readers handle both - see
+# backend/rasterscale.py - so switching is a path change and nothing else.
+#
+#   SLIPSENSE_RASTER_DIR=../deploy/rasters
+_default = BASE_DIR / "rasters" / "v2"
+RASTER_DIR = Path(os.environ.get("SLIPSENSE_RASTER_DIR", _default))
+if not RASTER_DIR.is_absolute():
+    RASTER_DIR = (BASE_DIR / RASTER_DIR).resolve()
+
+# The bundle flattens some names; fall back to the development layout when absent.
+def _layer(*candidates):
+    for name in candidates:
+        p = RASTER_DIR / name
+        if p.exists():
+            return p
+    return RASTER_DIR / candidates[0]
+
 RASTERS = {
     # v2 stack: rebuilt from a clean Copernicus GLO-30 DEM by
     # ml_models/build_terrain_stack.py, then predicted by generate_susceptibility_v2.py.
@@ -11,10 +33,10 @@ RASTERS = {
     # DEM_filled_75.tif ("elevation", actually slope in degrees) and slope75.tif
     # (computed in EPSG:4326, pinned at 83-90 degrees). The v2 map puts the same
     # landslides at percentile 99.1. Originals kept alongside for comparison.
-    "susceptibility_ml": BASE_DIR / "rasters" / "v2" / "susceptibility_ml.tif",
-    "susceptibility_dl": BASE_DIR / "rasters" / "v2" / "susceptibility_dl.tif",
+    "susceptibility_ml": _layer("susceptibility_ml.tif"),
+    "susceptibility_dl": _layer("susceptibility_dl.tif"),
     # Conformal ambiguity mask: cells the model cannot call at alpha = 0.1.
-    "uncertainty": BASE_DIR / "rasters" / "v2" / "uncertainty.tif",
+    "uncertainty": _layer("uncertainty.tif"),
     "susceptibility_ml_legacy": BASE_DIR / "rasters" / "susceptibility_ml.tif",
     "susceptibility_dl_legacy": BASE_DIR / "rasters" / "susceptibility_dl.tif",
     # Runout, rebuilt by ml_models/generate_runout_v2.py with an angle-of-reach stopping
@@ -22,13 +44,13 @@ RASTERS = {
     # DEM_filled_75.tif - a slope raster treated as elevation - and their deposition rule
     # tested slope < 20 degrees against a raster that never drops below 83, so deposition
     # could never occur.
-    "hazard_fused": BASE_DIR / "rasters" / "v2" / "hazard_fused.tif",
-    "transit": BASE_DIR / "rasters" / "v2" / "transit_mask.tif",
-    "deposition": BASE_DIR / "rasters" / "v2" / "deposition_mask.tif",
-    "runout_velocity": BASE_DIR / "rasters" / "v2" / "runout_velocity.tif",
+    "hazard_fused": _layer("hazard_fused.tif"),
+    "transit": _layer("transit.tif", "transit_mask.tif"),
+    "deposition": _layer("deposition.tif", "deposition_mask.tif"),
+    "runout_velocity": _layer("runout_velocity.tif"),
     "hazard_fused_legacy": BASE_DIR / "rasters" / "hazard_fused.tif",
-    "historical_susceptibility": BASE_DIR / "rasters" / "susceptibility_historical_gsi.tif",
-    "soil_susceptibility": BASE_DIR / "rasters" / "soil_susceptibility_index.tif",
+    "historical_susceptibility": _layer("historical_susceptibility.tif", "susceptibility_historical_gsi.tif"),
+    "soil_susceptibility": _layer("soil_susceptibility.tif", "soil_susceptibility_index.tif"),
 }
 
 # Per-district historical susceptibility rasters

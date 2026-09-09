@@ -8,6 +8,7 @@ import time
 
 import requests
 from config import RASTERS
+from rasterscale import to_physical
 from thresholds import (SUSCEPTIBILITY_HIGH, SUSCEPTIBILITY_VERY_HIGH,
                         SUSCEPTIBILITY_WATCH)
 
@@ -52,7 +53,9 @@ def sample_one(src, lon_in, lat_in):
     if row < 0 or col < 0 or row >= src.height or col >= src.width:
         return None, row, col
     win = Window(col, row, 1, 1)
-    return src.read(1, window=win)[0, 0], row, col
+    # Physical units, so a quantised deployment raster reads the same as the float32
+    # original it was built from.
+    return float(to_physical(src, src.read(1, window=win))[0, 0]), row, col
 
 
 
