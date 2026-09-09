@@ -11,13 +11,13 @@
     "tailwind-init": "npx tailwindcss init -p"
   },
   "dependencies": {
+    "cesium": "^1.119.0",
+    "framer-motion": "^11.18.2",
     "leaflet": "^1.9.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-leaflet": "^5.0.0",
-    "cesium": "^1.119.0",
-    "framer-motion": "^10.12.16",
-    "react-icons": "^4.11.0"
+    "react-icons": "^4.11.0",
+    "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
