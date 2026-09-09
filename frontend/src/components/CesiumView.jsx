@@ -1,3 +1,5 @@
+/* global __CESIUM_BASE_URL__ -- injected by vite.config.js `define`, so it exists at
+   build time but not as a runtime binding ESLint can see. */
 import React, { useEffect, useRef } from "react";
 import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
@@ -19,8 +21,15 @@ if (typeof window !== 'undefined') {
     );
   }
 
-  // Set the correct asset path for Cesium
-  window.CESIUM_BASE_URL = '/node_modules/cesium/Build/Cesium/';
+  // Where Cesium fetches its workers, shaders and imagery from at runtime. Defined by
+  // vite.config.js: node_modules in development, the copied /cesium/ directory in a
+  // production build. Hardcoding the node_modules path meant the deployed 3D view had
+  // no workers at all - the requests fell through the SPA rewrite and returned
+  // index.html, so Cesium was parsing HTML as JavaScript and as terrain JSON.
+  window.CESIUM_BASE_URL =
+    typeof __CESIUM_BASE_URL__ !== 'undefined'
+      ? __CESIUM_BASE_URL__
+      : '/node_modules/cesium/Build/Cesium/';
 }
 
 const TILE_SERVER = import.meta.env.VITE_TILE_SERVER || "http://localhost:8000";
