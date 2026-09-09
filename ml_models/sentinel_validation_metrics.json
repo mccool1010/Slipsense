@@ -12,8 +12,8 @@
     {
       "map": "SlipSense v2 (ML)",
       "n": 42,
-      "mean_percentile": 84.94372384557334,
-      "median_percentile": 88.66339159783264,
+      "mean_percentile": 87.4305415949241,
+      "median_percentile": 91.52129166609868,
       "pct_in_top20": 73.80952380952381,
       "enrichment": 3.69,
       "wilcoxon_p": 2.2737367544323206e-13
