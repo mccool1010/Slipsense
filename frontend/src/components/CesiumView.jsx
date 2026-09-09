@@ -25,6 +25,17 @@ if (typeof window !== 'undefined') {
 
 const TILE_SERVER = import.meta.env.VITE_TILE_SERVER || "http://localhost:8000";
 
+// A deployed build with no VITE_TILE_SERVER points at localhost, which does not exist
+// for a visitor. Requesting tiles from it returns something that is not an image, and
+// Cesium treats a failed imagery decode as fatal - "InvalidStateError: The image could
+// not be decoded", then "Rendering has stopped", and the whole globe goes black. The
+// terrain is fine; one unreachable overlay takes the scene down with it. So when the
+// backend is unreachable, do not add the overlay at all.
+const BACKEND_UNREACHABLE =
+  typeof window !== "undefined" &&
+  !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname) &&
+  /localhost|127\.0\.0\.1/.test(TILE_SERVER);
+
 // Velocity ramp, matching the runout figure: blue slow through red fast. Colouring by
 // speed rather than a single hue is what makes the corridors informative - a long slow
 // creep and a short violent debris surge are not the same hazard.
@@ -163,21 +174,35 @@ const CesiumView = ({ lat, lon, onClose }) => {
         // three-dimensional phenomenon and a top-down view hides the relief that drives
         // them; seen obliquely, the high-susceptibility bands sit visibly on the steep
         // flanks rather than floating as abstract colour.
-        try {
-          const susceptibility = new Cesium.UrlTemplateImageryProvider({
-            url: `${TILE_SERVER}/tiles/susceptibility_ml/{z}/{x}/{y}.png`,
-            maximumLevel: 14,
-            credit: "SlipSense v2 susceptibility",
-          });
-          const layer = viewer.imageryLayers.addImageryProvider(susceptibility);
-          layer.alpha = 0.65;
-          console.log("Susceptibility layer draped");
-        } catch (layerError) {
-          console.warn("Could not drape susceptibility layer:", layerError);
+        if (BACKEND_UNREACHABLE) {
+          console.warn(
+            "VITE_TILE_SERVER is not set; skipping the susceptibility drape. " +
+            "Terrain and imagery still render."
+          );
+        } else {
+          try {
+            const susceptibility = new Cesium.UrlTemplateImageryProvider({
+              url: `${TILE_SERVER}/tiles/susceptibility_ml/{z}/{x}/{y}.png`,
+              maximumLevel: 14,
+              credit: "SlipSense v2 susceptibility",
+            });
+            const layer = viewer.imageryLayers.addImageryProvider(susceptibility);
+            layer.alpha = 0.65;
+            // A tile that fails to load must not escalate into a fatal render error.
+            if (susceptibility.errorEvent) {
+              susceptibility.errorEvent.addEventListener((err) => {
+                console.warn("Susceptibility tile failed (continuing):", err?.message);
+              });
+            }
+            console.log("Susceptibility layer draped");
+          } catch (layerError) {
+            console.warn("Could not drape susceptibility layer:", layerError);
+          }
         }
 
         // Runout corridors, drawn as ground-clamped lines coloured by modelled velocity.
         try {
+          if (BACKEND_UNREACHABLE) throw new Error("no backend configured");
           const res = await fetch(
             `${TILE_SERVER}/rasters/v2/runout_paths_exposed.geojson`
           );
@@ -216,6 +241,13 @@ const CesiumView = ({ lat, lon, onClose }) => {
         // Western Ghats relief is real but subtle beside a 1000 m wide valley; a mild
         // exaggeration makes the slopes that drive failure readable without cartooning.
         viewer.scene.verticalExaggeration = 1.6;
+
+        // Cesium stops the render loop entirely on an unhandled scene error, which
+        // turns one failed tile decode into a black screen. Log and carry on instead.
+        viewer.scene.renderError.addEventListener((scene, error) => {
+          console.warn("Cesium render error (continuing):", error);
+          viewer.useDefaultRenderLoop = true;
+        });
 
         viewerRef.current = viewer;
         initialized.current = true;

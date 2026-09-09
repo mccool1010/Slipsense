@@ -88,6 +88,15 @@ function ZoomWatcher({ onZoom }) {
 // for development. Module scope, so effects do not need it as a dependency.
 const TILE_SERVER = import.meta.env.VITE_TILE_SERVER || "http://localhost:8000";
 
+// A deployed build that fell back to localhost cannot reach any backend, and the
+// symptom - base map fine, every overlay empty - is indistinguishable from the layers
+// being broken. That ambiguity has cost enough time on this project already, so say it
+// plainly instead of letting it look like a model problem.
+const MISCONFIGURED_BACKEND =
+  typeof window !== "undefined" &&
+  !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname) &&
+  /localhost|127\.0\.0\.1/.test(TILE_SERVER);
+
 // Velocity ramp for runout corridors: blue slow, red fast. Matches the colouring used
 // in ml_models/runout_figure.py so the app and the figures tell the same story.
 function velocityColor(v) {
@@ -255,6 +264,15 @@ const MapView = ({
       {/* Basemap switcher, coordinate readout and a caption naming the modelled area.
           Without the caption, transparent-because-out-of-coverage is impossible to
           tell apart from transparent-because-broken. */}
+      {MISCONFIGURED_BACKEND && (
+        <div className="map-config-warning">
+          <b>No backend configured.</b> This build points at{" "}
+          <code>{TILE_SERVER}</code>, which does not exist for visitors, so no
+          susceptibility, runout or hover data can load. Set{" "}
+          <code>VITE_TILE_SERVER</code> to the API URL and redeploy.
+        </div>
+      )}
+
       <div className="map-hud">
         <div className="map-hud-row">
           {Object.entries(BASEMAPS).map(([key, cfg]) => (

@@ -1,42 +1,54 @@
-# SlipSense — Landslide Susceptibility & Runout for the Western Ghats
+<div align="center">
 
-A terrain-aware landslide susceptibility, runout and alerting system, built on a 30 m
-Copernicus DEM, ESA WorldCover vegetation and SoilGrids soils, and validated against
-**42 landslide scars mapped independently from Sentinel-2 imagery**.
+# SlipSense
+
+### Landslide susceptibility, runout and rainfall triggering for the Western Ghats
+
+[![Live demo](https://img.shields.io/badge/live_demo-slipsense--sage.vercel.app-38bdf8?style=for-the-badge)](https://slipsense-sage.vercel.app/)
+[![Model card](https://img.shields.io/badge/model_card-limitations_%26_retractions-f59e0b?style=for-the-badge)](docs/MODEL_CARD.md)
+[![Tests](https://img.shields.io/badge/tests-21_passing-22c55e?style=for-the-badge)](tests/test_pipeline.py)
+
+**[→ Open the live map](https://slipsense-sage.vercel.app/)**
+
+*The API sleeps when idle. If overlays are missing on first load, open
+[/health](https://slipsense-api.onrender.com/health), wait for a response, then reload.*
+
+</div>
 
 <p align="center">
   <img src="docs/figures/susceptibility_comparison.png" width="100%"
        alt="Susceptibility before and after the rebuild"/>
 </p>
 
-## What the evidence actually says
+---
+
+## What this is
+
+A 30 m landslide susceptibility model for the Western Ghats, built from a Copernicus
+GLO-30 DEM, ESA WorldCover vegetation and SoilGrids soils — with debris-flow runout,
+rainfall triggering, calibrated alert tiers, and an exposure analysis that says which
+corridors threaten buildings and roads.
+
+It is also, deliberately, a record of how a project can report excellent numbers and be
+wrong. The figures this repository used to publish — F1 0.832, ROC-AUC 0.958 — came from
+a dataset in which **550 of 800 rows were fabricated**, fed by rasters whose contents did
+not match their filenames. Everything below is what survived rebuilding it from scratch
+and checking it against independent data.
+
+## What the evidence supports
 
 | Claim | Evidence |
 |---|---|
 | The map ranks dangerous ground well | Independent satellite-mapped scars land in its **top quintile at 3.7× chance**, p = 2e-13 |
-| It generalises beyond its training tile | Verified across **10 tiles** and **106 independent catalog events** |
+| It generalises past its training tile | Verified across **10 tiles**, 42 Sentinel-2 scars and 106 catalog events |
 | It is calibrated | ECE **0.040**; conformal coverage **0.901** against a 0.90 target |
-| It knows what it does not know | **24%** of cells flagged ambiguous and shaded as such |
-| The ML earns its complexity | **Not demonstrated.** A plain slope raster performs the same out of sample (paired p = 0.647, ML ahead on 21 of 42 scars) |
+| It admits what it cannot call | **24%** of cells flagged ambiguous and shaded as such |
+| **The ML earns its complexity** | **Not demonstrated.** A plain slope raster scores the same out of sample (paired p = 0.647, ML ahead on 21 of 42 scars) |
 
-That last row is the honest headline, and it sits deliberately in the same table as the
-good news. Full detail — including what was retracted and why — in
-**[docs/MODEL_CARD.md](docs/MODEL_CARD.md)**.
+That last row belongs in the same table as the rest. Full detail, including everything
+retracted and why, in **[docs/MODEL_CARD.md](docs/MODEL_CARD.md)**.
 
-> [!WARNING]
-> **Earlier published figures are retracted.** F1 0.832 / Accuracy 85.6% /
-> ROC-AUC 0.958 came from a dataset with **550 of 800 rows fabricated** by
-> `np.random.uniform`, in which `elevation` and `dist_river` were generated *from the
-> label* — so the single rule `dist_river < 1250` separated every synthetic row
-> perfectly. The rasters feeding them were mislabelled too: `DEM_filled_75.tif` held
-> slope in degrees rather than elevation, and `slope75.tif` was computed in EPSG:4326
-> and pinned at 83–90° everywhere.
->
-> The deployed map ranked real landslide sites at the **35th percentile** of its own
-> distribution — worse than random. The rebuilt map places them at the **99.5th**.
-> `data_preparation.py` and `enhanced_model.py` now refuse to run.
-
-## Current results
+## Results
 
 Spatial-block cross-validation, 2,779 real samples, zero synthetic:
 
@@ -46,14 +58,14 @@ Spatial-block cross-validation, 2,779 real samples, zero synthetic:
 | XGBoost | 0.892 | 0.609 | 0.689 | 0.470 | 0.559 |
 | Patch CNN (display layer) | 0.896 | 0.593 | 0.556 | 0.556 | 0.556 |
 
-`forest_fraction` is the single most important feature (+0.213), ahead of relative relief
-(+0.202) — vegetation is signal a DEM structurally cannot contain. Landslide sites
-average 0.57 forest cover against 0.84 for background.
+`forest_fraction` is the strongest single feature (+0.213), ahead of relative relief
+(+0.202) — vegetation is signal a DEM structurally cannot hold. Landslide sites average
+**0.57 forest cover against 0.84** for background.
 
-**Rainfall triggering**, the temporal half: AUC 0.756, with 3-day antecedent rainfall of
-**79 mm before failures against 30 mm on quiet days**.
+**Rainfall triggering** answers *when*, where susceptibility answers *where*: AUC 0.756,
+with 3-day antecedent rainfall of **79 mm before failures against 30 mm on quiet days**.
 
-**Alert tiers**, calibrated by how much terrain each one flags:
+**Alert tiers**, calibrated by the share of terrain each one flags:
 
 | Tier | Cutoff | Flags | Catches of inventory |
 |---|---|---|---|
@@ -61,38 +73,78 @@ average 0.57 forest cover against 0.84 for background.
 | HIGH | 0.619 | 1% | 84.9% |
 | VERY HIGH | 0.869 | 0.2% | 32.6% |
 
-## Coverage — read this before quoting the map
+## Debris-flow runout
 
-The model is trained on inventory from **one 1°×1° tile** (75–76°E, 12–13°N), which
-intersects only **two** Kerala districts, Kasaragod and Kannur; 215 of the 279 inventory
-points are in Karnataka. Prediction extends to **10 tiles** across the Western Ghats, and
-those nine are extrapolation — scored against independent events, but not trained there.
-
-The system **does not detect landslides**. It predicts susceptibility: which slopes
-*could* fail. Detection from imagery exists only as the Sentinel-2 inventory pipeline.
+Angle-of-reach stopping with Holmgren multiple-flow-direction spreading and turbulent
+drag, so corridors fan and bifurcate rather than running as single-pixel threads.
+Modelled velocity has a median of 13.3 m/s and an achieved reach angle of 21.8° against
+a 22° friction angle.
 
 <p align="center">
   <img src="docs/figures/runout_comparison.png" width="100%"
-       alt="Debris-flow runout: source, transit and deposition with modelled velocity"/>
+       alt="Runout: source, transit and deposition with modelled velocity"/>
 </p>
 
-## What is in here
+**162 corridors intersect built assets.** The worst carries 6 buildings and 1.05 km of
+road across 62 ha.
 
-| Component | What it does |
+## Independent validation
+
+42 landslide scars mapped from Sentinel-2 NDVI change across six Western Ghats areas —
+located to a 10 m pixel, produced by satellite observation rather than by anyone deciding
+where to walk.
+
+<p align="center">
+  <img src="docs/figures/sentinel_change_wayanad.png" width="100%"
+       alt="Sentinel-2 before and after with detected scars beside the model's map"/>
+</p>
+
+| Map | NASA catalog (±5–50 km) | Sentinel scars (10 m) |
+|---|---|---|
+| SlipSense v2 (ML) | 67.6% / 1.89× | **87.4% / 3.69×** |
+| Slope alone | 68.6% / 2.31× | **88.0% / 4.05×** |
+| Relative relief alone | 70.1% / 2.26× | **86.8% / 4.05×** |
+
+Coordinate error in the catalog was suppressing every map by 17–19 percentile points.
+Removing it lifted all three together and left the ranking intact — which is why the
+honest claim is about the product, not the model class.
+
+## Coverage — read before quoting the map
+
+Training inventory lies entirely within **one 1°×1° tile** (75–76°E, 12–13°N),
+intersecting only **two** Kerala districts — Kasaragod and Kannur. 215 of the 279
+inventory points are in Karnataka. Prediction extends to **10 tiles**; those nine are
+extrapolation, scored against independent events but not trained there.
+
+The system **does not detect landslides**. It predicts susceptibility — which slopes
+*could* fail. Detection exists only as the Sentinel-2 inventory pipeline.
+
+## Architecture
+
+```
+Copernicus GLO-30 ─┐
+ESA WorldCover ────┼─→ terrain stack (11 layers, EPSG:32643, 30 m)
+SoilGrids 250 m ───┘         │
+                             ├─→ RandomForest ─→ susceptibility ─┬─→ runout (reach angle + MFD)
+279-point inventory ─────────┘                                   ├─→ alert tiers ─→ SMS
+                                                                 └─→ conformal uncertainty
+Open-Meteo reanalysis ─→ rainfall trigger model ─→ daily hazard
+Sentinel-2 NDVI change ─→ independent scar inventory ─→ validation
+```
+
+| Module | Purpose |
 |---|---|
-| `ml_models/terrain.py` | Priority-Flood+ε fill, Horn slope/aspect, Zevenbergen–Thorne curvature, D8 accumulation, TWI/SPI |
-| `ml_models/build_real_dataset.py` | Samples the real inventory against the real rasters, each in its own CRS |
-| `ml_models/train_spatial_cv.py` | Spatial-block CV — random splits leak neighbouring cells |
-| `ml_models/runout.py` | Angle-of-reach + multiple-flow-direction debris propagation with turbulent drag |
-| `ml_models/sentinel_inventory.py` | Maps landslide scars from Sentinel-2 NDVI change |
-| `ml_models/baseline_comparison.py` | The test that matters: ML vs slope vs relief vs published GSI |
-| `ml_models/conformal.py` | Calibration and distribution-free uncertainty |
-| `ml_models/physics_fos.py` | Infinite-slope factor of safety — a non-statistical second opinion |
-| `ml_models/exposure.py` | Intersects runout corridors with OSM buildings and roads |
-| `backend/` | FastAPI tile server, pixel queries, rainfall, district alerting |
-| `frontend/` | React + Leaflet map with a Cesium 3D view |
+| [`terrain.py`](ml_models/terrain.py) | Priority-Flood+ε, Horn slope/aspect, Zevenbergen–Thorne curvature, D8 accumulation |
+| [`build_real_dataset.py`](ml_models/build_real_dataset.py) | Samples the inventory against real rasters, each in its own CRS |
+| [`train_spatial_cv.py`](ml_models/train_spatial_cv.py) | Spatial-block CV — random splits leak neighbouring cells |
+| [`runout.py`](ml_models/runout.py) | Angle-of-reach + MFD propagation with turbulent drag |
+| [`sentinel_inventory.py`](ml_models/sentinel_inventory.py) | Maps scars from Sentinel-2 NDVI change |
+| [`baseline_comparison.py`](ml_models/baseline_comparison.py) | The test that matters: ML vs slope vs relief vs GSI |
+| [`conformal.py`](ml_models/conformal.py) | Calibration and distribution-free uncertainty |
+| [`physics_fos.py`](ml_models/physics_fos.py) | Infinite-slope factor of safety — a non-statistical second opinion |
+| [`exposure.py`](ml_models/exposure.py) | Intersects corridors with OSM buildings and roads |
 
-## Running it
+## Running locally
 
 ```bash
 # Backend
@@ -105,39 +157,23 @@ cd frontend
 npm install && npm run dev
 ```
 
-Backend on `:8000`, frontend on `:5173`. Check `GET /health` first — it reports every
-dependency, which rasters are present, and the exact command to fix what is missing.
-
-### Configuration
-
-Both files are optional; the app degrades rather than breaking.
+Check `GET /health` first — it reports every dependency, which rasters resolved, and the
+exact command to fix what is missing.
 
 ```bash
 # backend/.env
 OPENWEATHER_API_KEY=      # rainfall reads 0.0 without it
 
 # frontend/.env
-VITE_CESIUM_ION_TOKEN=    # 3D falls back to open terrarium elevation without it
 VITE_TILE_SERVER=http://localhost:8000
+VITE_CESIUM_ION_TOKEN=    # 3D falls back to open terrarium elevation without it
 ```
 
-### Rebuilding the rasters
+Rebuilding the raster stack (~7 GB, gitignored) and deployment are covered in
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
-The generated stack is ~7 GB and gitignored, so a fresh clone has none:
-
-```bash
-python ml_models/build_terrain_stack.py       # terrain from the DEM
-python ml_models/build_soil_layer.py          # SoilGrids 250 m
-python ml_models/build_landcover_layer.py     # ESA WorldCover 10 m
-python ml_models/build_real_dataset.py
-python ml_models/train_spatial_cv.py
-python ml_models/generate_susceptibility_v2.py
-python ml_models/calibrate_alert_threshold.py
-python ml_models/generate_runout_v2.py --threshold 0.619
-```
-
-Tests: `python -m pytest tests/ -v` — 21 tests, each pinning one of the defects that
-produced the retracted results.
+Tests: `python -m pytest tests/ -v` — 21 tests, each pinning one defect that produced the
+retracted results.
 
 ## Reports
 
@@ -152,23 +188,21 @@ produced the retracted results.
 | [rainfall_model_report.md](ml_models/rainfall_model_report.md) | Rainfall triggering |
 | [coverage_report.md](ml_models/coverage_report.md) | Per-tile transfer |
 
-## Known limitations
+## Limitations
 
 1. **The ML has not beaten a slope-and-relief index out of sample.** The burden of proof
-   sits with the model, and it has not met it.
-2. **Two districts, not fourteen.** Everything beyond the training tile is extrapolation.
-3. **Inventory provenance is unknown** — the 279 points carry only an `id`, with no date,
-   source or positional accuracy.
+   sits with the model.
+2. **Two districts, not fourteen.** Everything else is extrapolation.
+3. **Inventory provenance is unknown** — the 279 points carry only an `id`.
 4. **The Sentinel scars are unverified** — NDVI loss also comes from logging and
    quarrying.
-5. **Runout parameters are literature defaults**, not calibrated against local
-   measurements.
+5. **Runout parameters are literature defaults**, not locally calibrated.
 6. **Factor of safety agrees with the ML on only 6%** of flagged cells; unresolved.
 
 ## Status
 
 A research prototype and decision-support tool. **Not an operational warning system.**
-Final authority rests with KSDMA and the Geological Survey of India.
+Authority rests with KSDMA and the Geological Survey of India.
 
 ---
 
