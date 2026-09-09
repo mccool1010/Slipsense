@@ -68,6 +68,16 @@ Render's free instance still needs no card and builds the same Dockerfile.
 
 Then check `https://<service>.onrender.com/health` for `"ok":true`.
 
+**Do not set `PORT` yourself.** Render assigns a port, injects it as `PORT`, and routes
+traffic to exactly that port. An explicit `PORT` in `envVars` overrides the injected
+value, so the server binds one port while Render routes to another. Every request then
+times out having received zero bytes, which is indistinguishable from a crash-looping
+container - the logs show a healthy startup and the service is simply unreachable.
+
+The free instance type is **US West (Oregon) only**. Requesting another region is
+ignored, so tiles are served from Oregon regardless of what `render.yaml` asks for -
+worth knowing before attributing latency to the model.
+
 **The free instance sleeps after ~15 minutes idle** and takes 30-60 seconds to wake. The
 first map load after a quiet period shows empty tiles until the container is up - which
 looks identical to the coverage bug this project already has history with. Before

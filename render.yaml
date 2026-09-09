@@ -23,7 +23,10 @@ services:
     # repository root, so the build context has to be the root rather than backend/.
     dockerContext: .
     plan: free
-    region: singapore
+    # Oregon: the free instance type is only offered in Render's US West region.
+    # Requesting singapore is silently ignored, which is misleading when debugging
+    # latency - DNS resolves to gcp-us-west1 regardless.
+    region: oregon
     # Tracks main. The work originally landed on rebuild/honest-pipeline; pointing a
     # deployment at a feature branch means deleting that branch silently detaches the
     # service from any future commit.
@@ -32,10 +35,12 @@ services:
     envVars:
       - key: SLIPSENSE_RASTER_DIR
         value: /app/deploy/rasters
-      # Render injects PORT and expects the service to bind it; the Dockerfile's CMD
-      # already reads $PORT.
-      - key: PORT
-        value: "8000"
+      # PORT is deliberately NOT set here. Render assigns a port, injects it as PORT,
+      # and routes external traffic to exactly that port. Setting it explicitly in
+      # envVars overrides the injected value, so uvicorn bound 8000 while Render kept
+      # routing to its own choice - every request then timed out having received zero
+      # bytes, which looks identical to a crash-looping container. The Dockerfile's CMD
+      # reads $PORT with 8000 only as a local default.
       # Alerting can send real SMS. An endpoint reachable from the open internet that
       # can spend money should not be armed by default.
       - key: DRY_RUN
