@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-from config import RASTERS
+from config import BASE_DIR, RASTER_DIR, RASTERS
 from tiles import router as tiles_router
 from pixel import router as pixel_router
 import os
@@ -41,13 +41,37 @@ except Exception as exc:  # pragma: no cover - depends on the local environment
           f"Tiles and pixel queries still work. "
           f"Install backend/requirements.txt to enable alerts.")
 
-# Serve static files (rasters, GeoJSON, etc.)
-rasters_dir = Path(__file__).parent / "rasters"
-app.mount("/rasters", StaticFiles(directory=str(rasters_dir)), name="rasters")
+# Static files: the vector products the frontend fetches directly, chiefly
+# /rasters/v2/runout_paths_exposed.geojson.
+#
+# The directory differs between layouts. In development RASTER_DIR is
+# backend/rasters/v2, so the mount has to be its parent for that URL to resolve; in the
+# deployment bundle RASTER_DIR is deploy/rasters and already contains v2/. Rather than
+# encode either assumption, mount whichever candidate actually holds a v2 directory.
+def _static_root():
+    for candidate in (RASTER_DIR, RASTER_DIR.parent, BASE_DIR / "rasters"):
+        if (candidate / "v2").is_dir():
+            return candidate
+    fallback = BASE_DIR / "rasters"
+    return fallback if fallback.is_dir() else None
 
-# Serve Cesium terrain tiles (expects a `terrain_tiles/` folder next to this file)
-terrain_dir = Path(__file__).parent / "terrain_tiles"
-app.mount("/terrain", StaticFiles(directory=str(terrain_dir)), name="terrain")
+
+_static = _static_root()
+if _static is not None:
+    app.mount("/rasters", StaticFiles(directory=str(_static)), name="rasters")
+else:
+    print("WARNING: no raster static directory found; /rasters is unavailable.")
+
+# Cesium terrain tiles. Optional, and absent from the deployment image on purpose: these
+# are 256x256 8-bit greyscale PNGs capped at zoom 4, while Cesium's heightmap-1.0 format
+# expects 65x65 16-bit binary .terrain files, so they never worked. CesiumView now reads
+# open terrarium elevation tiles instead.
+#
+# StaticFiles raises if the directory is missing, which took down the entire server on
+# first deploy - an optional, unused asset directory must not be able to do that.
+terrain_dir = BASE_DIR / "terrain_tiles"
+if terrain_dir.is_dir():
+    app.mount("/terrain", StaticFiles(directory=str(terrain_dir)), name="terrain")
 
 @app.get("/")
 def root():
@@ -113,7 +137,12 @@ def health():
         layers[name] = Path(path).exists()
 
     missing = [m for m, v in deps.items() if not v["ok"]]
-    absent = [n for n, ok in layers.items() if not ok]
+    # The *_legacy layers are the superseded rasters, kept locally so the before/after
+    # comparison figure can be regenerated. They are deliberately excluded from the
+    # deployment image, so requiring them would make every container report unhealthy -
+    # and the healthcheck would fail the deploy for a reason that has nothing to do with
+    # whether the service works.
+    absent = [n for n, ok in layers.items() if not ok and not n.endswith("_legacy")]
     return {
         "ok": not missing and not absent,
         "dependencies": deps,
