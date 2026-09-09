@@ -5,7 +5,10 @@
 # which, on this project, is a failure mode we have already spent enough time on.
 
 app = "slipsense"
-primary_region = "bom"   # Mumbai: closest region to Kerala, so tile latency is lowest
+# Singapore is the closest region Fly still offers to Kerala. Mumbai (bom) would be
+# nearer but no longer appears in `fly platform regions`, and naming it makes
+# `fly launch` fail outright with "region not found" rather than falling back.
+primary_region = "sin"
 
 [build]
   dockerfile = "backend/Dockerfile"
