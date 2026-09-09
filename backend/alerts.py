@@ -35,6 +35,7 @@ import os
 import random
 import logging
 
+import numpy as np
 import rasterio
 from rasterio.warp import transform as rio_transform
 from shapely.geometry import shape, Point
@@ -184,6 +185,24 @@ def sample_points_in_polygon(polygon_geom, num_points: int = 50) -> List[tuple]:
     return points
 
 
+def _to_raster_xy(src, points):
+    """Project (lat, lon) pairs into the raster's CRS, dropping any that fall outside."""
+    if not points:
+        return []
+    lats = [p[0] for p in points]
+    lons = [p[1] for p in points]
+    if src.crs is not None:
+        try:
+            xs, ys = rio_transform("EPSG:4326", src.crs, lons, lats)
+        except Exception:
+            xs, ys = lons, lats
+    else:
+        xs, ys = lons, lats
+    left, bottom, right, top = src.bounds
+    return [(x, y) for x, y in zip(xs, ys)
+            if left <= x <= right and bottom <= y <= top]
+
+
 def get_susceptibility_at_points(points: List[tuple]) -> List[float]:
     """Read susceptibility values at given lat/lon points.
 
@@ -198,26 +217,20 @@ def get_susceptibility_at_points(points: List[tuple]) -> List[float]:
 
     try:
         with rasterio.open(RASTERS["susceptibility_ml"]) as src:
-            for lat, lon in points:
+            # rasterio's sample() walks the points in one pass, reading only the blocks
+            # it needs. The previous loop called src.read(1) per point, decompressing the
+            # whole 13.4M-cell raster each time - 50 sample points per district across 14
+            # districts came to tens of gigabytes of reads for a single /alerts/check.
+            for x, y in _to_raster_xy(src, points):
                 try:
-                    # Transform to raster CRS if needed
-                    if src.crs is not None:
-                        xs, ys = rio_transform("EPSG:4326", src.crs, [lon], [lat])
-                        x, y = xs[0], ys[0]
-                    else:
-                        x, y = lon, lat
-                    
-                    row, col = src.index(x, y)
-                    if 0 <= row < src.height and 0 <= col < src.width:
-                        band = src.read(1)
-                        val = float(band[row, col])
-                        if val >= 0:  # Filter out nodata
-                            values.append(val)
-                except Exception:
+                    val = float(next(src.sample([(x, y)], 1))[0])
+                except (StopIteration, ValueError):
                     continue
+                if np.isfinite(val) and val >= 0:  # nodata is negative or NaN
+                    values.append(val)
     except Exception as e:
         logger.error(f"Error reading susceptibility raster: {e}")
-    
+
     return values
 
 
@@ -228,24 +241,15 @@ def check_hazard_zones_at_points(points: List[tuple]) -> tuple:
     
     try:
         with rasterio.open(RASTERS["hazard_fused"]) as src:
-            for lat, lon in points:
+            for x, y in _to_raster_xy(src, points):
                 try:
-                    if src.crs is not None:
-                        xs, ys = rio_transform("EPSG:4326", src.crs, [lon], [lat])
-                        x, y = xs[0], ys[0]
-                    else:
-                        x, y = lon, lat
-                    
-                    row, col = src.index(x, y)
-                    if 0 <= row < src.height and 0 <= col < src.width:
-                        band = src.read(1)
-                        zone_code = int(band[row, col])
-                        if zone_code == ZONE_FAILURE:
-                            has_failure = True
-                        elif zone_code == ZONE_TRANSIT:
-                            has_transit = True
-                except Exception:
+                    zone_code = int(next(src.sample([(x, y)], 1))[0])
+                except (StopIteration, ValueError):
                     continue
+                if zone_code == ZONE_FAILURE:
+                    has_failure = True
+                elif zone_code == ZONE_TRANSIT:
+                    has_transit = True
     except Exception as e:
         logger.error(f"Error reading hazard raster: {e}")
     
@@ -262,22 +266,13 @@ def get_soil_susceptibility_at_points(points: List[tuple]) -> List[float]:
             return values
             
         with rasterio.open(soil_path) as src:
-            for lat, lon in points:
+            for x, y in _to_raster_xy(src, points):
                 try:
-                    if src.crs is not None:
-                        xs, ys = rio_transform("EPSG:4326", src.crs, [lon], [lat])
-                        x, y = xs[0], ys[0]
-                    else:
-                        x, y = lon, lat
-                    
-                    row, col = src.index(x, y)
-                    if 0 <= row < src.height and 0 <= col < src.width:
-                        band = src.read(1)
-                        val = float(band[row, col])
-                        if val > 0 and val != -9999:
-                            values.append(val)
-                except Exception:
+                    val = float(next(src.sample([(x, y)], 1))[0])
+                except (StopIteration, ValueError):
                     continue
+                if np.isfinite(val) and val > 0 and val != -9999:
+                    values.append(val)
     except Exception as e:
         logger.error(f"Error reading soil susceptibility raster: {e}")
     
