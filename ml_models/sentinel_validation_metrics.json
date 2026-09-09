@@ -1,0 +1,40 @@
+{
+  "n_scars": 42,
+  "areas": [
+    "idukki",
+    "kannur",
+    "kozhikode",
+    "palakkad",
+    "pathanamthitta",
+    "wayanad"
+  ],
+  "results": [
+    {
+      "map": "SlipSense v2 (ML)",
+      "n": 42,
+      "mean_percentile": 87.4305415949241,
+      "median_percentile": 91.52129166609868,
+      "pct_in_top20": 73.80952380952381,
+      "enrichment": 3.69,
+      "wilcoxon_p": 2.2737367544323206e-13
+    },
+    {
+      "map": "Slope raster alone",
+      "n": 42,
+      "mean_percentile": 87.97106026440932,
+      "median_percentile": 89.78327227171428,
+      "pct_in_top20": 80.95238095238095,
+      "enrichment": 4.05,
+      "wilcoxon_p": 2.2737367544323206e-13
+    },
+    {
+      "map": "Relative relief alone",
+      "n": 42,
+      "mean_percentile": 86.7762039033052,
+      "median_percentile": 89.59354716682238,
+      "pct_in_top20": 80.95238095238095,
+      "enrichment": 4.05,
+      "wilcoxon_p": 2.2737367544323206e-13
+    }
+  ]
+}

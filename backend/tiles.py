@@ -1,11 +1,22 @@
 from fastapi import APIRouter, HTTPException, Response
 from config import RASTERS, DISTRICT_RASTERS
 from rio_tiler.io import COGReader
+from rio_tiler.errors import TileOutsideBounds
 import numpy as np
 from io import BytesIO
 from PIL import Image
 
 router = APIRouter()
+
+
+def _make_empty_tile():
+    """A single fully transparent 256x256 PNG, encoded once at import."""
+    buf = BytesIO()
+    Image.new("RGBA", (256, 256), (0, 0, 0, 0)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+_EMPTY_TILE = _make_empty_tile()
 
 
 def _normalize_band(band):
@@ -26,32 +37,82 @@ def _normalize_rgb(arr):
     return stacked
 
 
+# Class breaks live in thresholds.py, which imports nothing. Taking them from `alerts`
+# made rendering a PNG depend on shapely, rasterio and requests, so a missing shapely
+# install brought down the whole tile server.
+from thresholds import SUSCEPTIBILITY_BREAKS
+from rasterscale import to_physical
+
+
+def colorize_susceptibility(band):
+    """Colour a susceptibility probability raster with absolute class breaks.
+
+    Continuous layers were previously rendered with _normalize_band, which rescales
+    each tile to its own min and max. That makes the colours mean something different
+    in every tile - a quiet lowland tile is stretched to look as dangerous as a tile
+    full of failure zones - and it hides the real distribution, which is heavily skewed
+    toward zero. Fixed breaks keep one colour meaning one probability everywhere, and
+    keep the map consistent with the alert tiers.
+    """
+    h, w = band.shape
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+    low, high, very_high = SUSCEPTIBILITY_BREAKS
+
+    valid = np.isfinite(band)
+    # Below WATCH: faint, so safe ground recedes instead of competing for attention.
+    sel = valid & (band < low)
+    rgba[sel] = [30, 64, 120, 60]
+    sel = valid & (band >= low) & (band < high)
+    rgba[sel] = [250, 204, 21, 170]        # WATCH - amber
+    sel = valid & (band >= high) & (band < very_high)
+    rgba[sel] = [249, 115, 22, 200]        # HIGH - orange
+    sel = valid & (band >= very_high)
+    rgba[sel] = [220, 38, 38, 230]         # VERY HIGH - red
+    return rgba
+
+
+def colorize_uncertainty(band):
+    """Hatch-free shading for cells the model cannot call.
+
+    `uncertainty.tif` marks cells whose conformal prediction set contains both labels
+    at alpha = 0.1 - about a quarter of the grid. Showing them distinctly is more
+    honest than painting a single confident-looking number everywhere, and it matters
+    most on the nine extrapolated tiles the model was never trained on.
+    """
+    h, w = band.shape
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+    ambiguous = np.isfinite(band) & (band > 0.5)
+    rgba[ambiguous] = [148, 163, 184, 130]   # neutral slate, deliberately unalarming
+    return rgba
+
+
 def colorize_hazard(arr):
     """
     Colorize hazard_fused raster values.
     
     arr: 2D numpy array with values 0–3
-    Returns: RGB image (h, w, 3) as uint8
+    Returns: RGBA image (h, w, 4) as uint8 with transparency for safe zones
     
     Mapping:
-    0 = Safe (transparent/black)
-    1 = Deposition (Yellow)
-    2 = Transit (Orange)
-    3 = Failure (Red)
+    0 = Safe (fully transparent)
+    1 = Deposition (Warm Yellow, semi-transparent)
+    2 = Transit (Orange, semi-transparent)
+    3 = Failure (Red, more opaque)
     """
     h, w = arr.shape
-    rgb = np.zeros((h, w, 3), dtype=np.uint8)
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
-    # Deposition → Yellow
-    rgb[arr == 1] = [255, 255, 0]
+    # Deposition → Warm Yellow (semi-transparent)
+    rgba[arr == 1] = [255, 220, 50, 200]
 
-    # Transit → Orange
-    rgb[arr == 2] = [255, 165, 0]
+    # Transit → Orange (semi-transparent)
+    rgba[arr == 2] = [255, 140, 0, 200]
 
-    # Failure → Red
-    rgb[arr == 3] = [220, 38, 38]
+    # Failure → Red (more opaque)
+    rgba[arr == 3] = [220, 38, 38, 220]
 
-    return rgb
+    # Safe (0) stays [0,0,0,0] → fully transparent
+    return rgba
 
 
 def colorize_historical_susceptibility(arr):
@@ -126,7 +187,23 @@ def tile(layer: str, z: str, x: str, y: str, district: str = None):
                 # Special handling for hazard_fused: colorize based on values 0-3
                 band = data[:, :, 0].astype(np.uint8)
                 img_arr = colorize_hazard(band)
-                img = Image.fromarray(img_arr, mode="RGB")
+                img = Image.fromarray(img_arr, mode="RGBA")
+            elif layer in ("susceptibility_ml", "susceptibility_dl"):
+                # Absolute class breaks, not per-tile normalisation - see
+                # colorize_susceptibility for why that distinction matters. The
+                # deployment bundle stores these quantised, so undo that first or every
+                # pixel compares as VERY HIGH against a 0-1 threshold.
+                band = to_physical(cog.dataset, data[:, :, 0])
+                img_arr = colorize_susceptibility(band)
+                # nan_to_num above turned nodata into 0, which would otherwise paint as
+                # "safe"; the tile mask is what actually distinguishes the two.
+                img_arr[mask == 0] = [0, 0, 0, 0]
+                img = Image.fromarray(img_arr, mode="RGBA")
+            elif layer == "uncertainty":
+                band = to_physical(cog.dataset, data[:, :, 0])
+                img_arr = colorize_uncertainty(band)
+                img_arr[mask == 0] = [0, 0, 0, 0]
+                img = Image.fromarray(img_arr, mode="RGBA")
             elif data.shape[2] == 1:
                 band = data[:, :, 0]
                 img_arr = _normalize_band(band).astype('uint8')
@@ -142,5 +219,42 @@ def tile(layer: str, z: str, x: str, y: str, district: str = None):
             img.save(buf, format='PNG')
             return Response(content=buf.getvalue(), media_type='image/png')
 
+    except TileOutsideBounds:
+        # A web map requests a full grid of tiles across the viewport, but each raster
+        # covers only its own footprint - the v2 stack is a single 1x1 degree tile. Every
+        # request outside it previously returned HTTP 500, so Leaflet drew nothing at all
+        # and the layer looked broken even where data existed. Serving a transparent tile
+        # is what a tile server is supposed to do here.
+        return Response(content=_EMPTY_TILE, media_type="image/png")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/layers/bounds")
+def layer_bounds():
+    """WGS84 bounds and zoom hint for every configured raster layer.
+
+    The v2 stack covers a single 1x1 degree tile, which is a small fraction of the
+    Kerala view the app opens on. With no way to discover that, a correctly working
+    layer is indistinguishable from a broken one: everything outside the footprint is
+    legitimately transparent, so the map just looks empty. The frontend uses this to
+    fit the view to real coverage and to outline it.
+    """
+    from rasterio.warp import transform_bounds
+
+    out = {}
+    for name, path in RASTERS.items():
+        try:
+            with COGReader(str(path)) as cog:
+                src = cog.dataset
+                west, south, east, north = transform_bounds(
+                    src.crs, "EPSG:4326", *src.bounds, densify_pts=21)
+            out[name] = {
+                # Leaflet order: [[south, west], [north, east]]
+                "bounds": [[round(south, 6), round(west, 6)],
+                           [round(north, 6), round(east, 6)]],
+                "area_deg2": round(abs((east - west) * (north - south)), 4),
+            }
+        except Exception as exc:  # a missing or unreadable layer must not break the rest
+            out[name] = {"error": str(exc)}
+    return out

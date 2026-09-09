@@ -7,6 +7,8 @@ Target: 70%+ F1 score
 """
 
 import os
+import sys
+
 import numpy as np
 import pandas as pd
 import joblib
@@ -234,6 +236,14 @@ Stacking Ensemble:
 
 
 def main():
+    sys.exit(
+        "enhanced_model.py is retired and will not run.\n"
+        "It trains on data/merged_landslide_data.csv, in which 550 of 800 rows are\n"
+        "fabricated and two features are derived from the label. Its reported\n"
+        "F1 0.832 / ROC-AUC 0.958 are artefacts of that leak and have been retracted.\n\n"
+        "Use: python ml_models/train_spatial_cv.py  (real data, spatial-block CV)"
+    )
+
     print("=" * 60)
     print("Enhanced Landslide Prediction Model Training")
     print("=" * 60)

@@ -10,18 +10,42 @@ import CesiumView from "./components/CesiumView";
 import Navbar from "./components/Navbar";
 import { ToastProvider, useToast } from "./components/Toast";
 import Particles from "./components/Particles";
+import AlertPanel from "./components/AlertPanel";
 
 // Layer display names for toast messages
 const layerNames = {
-  susceptibilityML: "ML Susceptibility",
-  susceptibilityDL: "DL Susceptibility",
-  hazardFused: "Final Hazard Map",
-  runout: "Runout Paths",
+  susceptibilityML: "Susceptibility (RandomForest)",
+  susceptibilityDL: "Susceptibility (CNN)",
+  uncertainty: "Model Uncertainty",
+  hazardFused: "Runout Zones",
+  runout: "Runout Corridors",
   transit: "Transit Zone",
   deposition: "Deposition Zone",
-  historicalSusceptibility: "GSI Historical",
+  historicalSusceptibility: "GSI Historical (published)",
   streets: "Street Map",
 };
+
+// Layers that paint the whole footprint. Showing several at once stacks four or five
+// translucent full-coverage rasters and the result is mud - the symptom that made the
+// map look broken even when every layer was rendering correctly. Selecting one of these
+// switches the others off; overlays (runout, zones, streets) stay independent.
+const BASE_LAYERS = [
+  "susceptibilityML",
+  "susceptibilityDL",
+  "uncertainty",
+  "historicalSusceptibility",
+  "hazardFused",
+];
+
+// Colour the tier the same way the map does, so the panel and the raster agree.
+function tierClass(tier) {
+  switch (tier) {
+    case "VERY HIGH": return "font-semibold text-red-400";
+    case "HIGH": return "font-semibold text-orange-400";
+    case "WATCH": return "font-semibold text-amber-300";
+    default: return "text-slate-300";
+  }
+}
 
 function AppContent() {
   const toast = useToast();
@@ -30,9 +54,13 @@ function AppContent() {
 
   // Which layers are visible
   const [activeLayers, setActiveLayers] = useState({
-    susceptibilityML: false,
-    susceptibilityDL: true,
-    hazardFused: true,
+    // The RandomForest map is the one the alert tiers are calibrated against, and it
+    // is sharper than the CNN raster, so it is the sensible default base layer.
+    susceptibilityML: true,
+    susceptibilityDL: false,
+    // Off by default: it is a caveat layer, not a hazard layer.
+    uncertainty: false,
+    hazardFused: false,
     runout: true,
     transit: false,
     deposition: false,
@@ -44,8 +72,9 @@ function AppContent() {
 
   // Opacity per layer
   const [layerOpacity, setLayerOpacity] = useState({
-    susceptibilityML: 0.6,
-    susceptibilityDL: 0.7,
+    susceptibilityML: 0.75,
+    susceptibilityDL: 0.75,
+    uncertainty: 0.5,
     hazardFused: 0.8,
     transit: 0.7,
     deposition: 0.7,
@@ -74,17 +103,22 @@ function AppContent() {
   const toggleLayer = useCallback((layerName) => {
     setActiveLayers((prev) => {
       const newState = !prev[layerName];
-      // Show toast notification
       const displayName = layerNames[layerName] || layerName;
       if (newState) {
         toast.success(`${displayName} enabled`);
       } else {
         toast.info(`${displayName} disabled`);
       }
-      return {
-        ...prev,
-        [layerName]: newState,
-      };
+
+      const next = { ...prev, [layerName]: newState };
+      // Turning on a base layer turns the other base layers off, so exactly one
+      // full-coverage raster is ever painted at a time.
+      if (newState && BASE_LAYERS.includes(layerName)) {
+        for (const other of BASE_LAYERS) {
+          if (other !== layerName) next[other] = false;
+        }
+      }
+      return next;
     });
   }, [toast]);
 
@@ -113,6 +147,7 @@ function AppContent() {
       susceptibility: null,
       historicalSusceptibility: null,
       historicalRiskClass: null,
+      soilSusceptibility: null,
       rainfall: 0,
       riskLevel: null,
     };
@@ -128,6 +163,7 @@ function AppContent() {
           susceptibility: data.susceptibility ?? data.sus ?? null,
           historicalSusceptibility: data.historical_susceptibility ?? null,
           historicalRiskClass: data.historical_risk_class ?? null,
+          soilSusceptibility: data.soil_susceptibility ?? null,
           rainfall: data.rainfall ?? data.rain ?? 0,
           riskLevel: data.riskLevel ?? data.risk_level ?? data.risk ?? null,
         };
@@ -206,6 +242,7 @@ function AppContent() {
           <div className="mt-4">
             <Legend />
           </div>
+          <AlertPanel />
 
           <AnimatePresence mode="wait">
             {selectedPoint?.type === "runout" && (
@@ -243,12 +280,26 @@ function AppContent() {
                 <p><b>Latitude:</b> {selectedPoint.lat}</p>
                 <p><b>Longitude:</b> {selectedPoint.lon}</p>
                 <p><b>Zone:</b> {selectedPoint.zone}</p>
-                <p><b>DL Susceptibility:</b> {selectedPoint.susceptibility}</p>
+                <p>
+                  <b>Susceptibility:</b>{" "}
+                  {(selectedPoint.susceptibility * 100).toFixed(1)}%
+                  {/* The calibrated tier, so the number is readable without the
+                      calibration table and matches what alerting acts on. */}
+                  {selectedPoint.susceptibility_class && (
+                    <span className={tierClass(selectedPoint.susceptibility_class)}>
+                      {" "}&mdash; {selectedPoint.susceptibility_class}
+                    </span>
+                  )}
+                </p>
                 {selectedPoint.historicalRiskClass && (
                   <p><b>GSI Historical:</b> {selectedPoint.historicalRiskClass}</p>
                 )}
+                {selectedPoint.soilSusceptibility != null && (
+                  <p><b>Soil Risk:</b> {(selectedPoint.soilSusceptibility * 100).toFixed(1)}%</p>
+                )}
                 <p><b>Rainfall:</b> {selectedPoint.rainfall} mm/hr</p>
                 <p><b>Overall Risk:</b> {selectedPoint.riskLevel}</p>
+
 
                 <button onClick={open3DView}>
                   View 3D Terrain

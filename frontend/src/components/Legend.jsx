@@ -21,6 +21,16 @@ const itemVariants = {
   },
 };
 
+// Calibrated in ml_models/calibrate_alert_threshold.py against the v2 map and checked
+// against how much of the 279-point inventory each cutoff recovers. Kept in step with
+// SUSCEPTIBILITY_BREAKS in backend/tiles.py and the thresholds in backend/alerts.py.
+const SUSCEPTIBILITY_CLASSES = [
+  { color: '#dc2626', label: 'Very high', detail: '≥ 0.87 · 0.2% of terrain' },
+  { color: '#f97316', label: 'High', detail: '≥ 0.70 · 1% of terrain' },
+  { color: '#facc15', label: 'Watch', detail: '≥ 0.45 · 5% of terrain' },
+  { color: '#1e4078', label: 'Low', detail: '< 0.45' },
+];
+
 const Legend = () => {
   return (
     <motion.div
@@ -48,9 +58,41 @@ const Legend = () => {
 
       <hr className="my-2" />
 
-      <motion.div variants={itemVariants} className="legend-item flex items-center gap-2 mb-2">
-        <span className="legend-gradient w-24 h-3 rounded-sm"></span>
-        <span className="text-sm">DL Susceptibility (Low → High)</span>
+      <motion.p variants={itemVariants} className="text-xs font-semibold mb-1">
+        Susceptibility
+      </motion.p>
+      {/* Class breaks match the alert tiers in backend/alerts.py, so what is shown on
+          the map and what triggers an alert cannot drift apart. The share of terrain
+          each tier covers is given because a colour alone does not convey how selective
+          it is. */}
+      {SUSCEPTIBILITY_CLASSES.map(({ color, label, detail }) => (
+        <motion.div
+          key={label}
+          variants={itemVariants}
+          className="legend-item flex items-center gap-2 mb-1"
+        >
+          <span
+            style={{
+              display: 'inline-block', width: '12px', height: '12px',
+              borderRadius: '2px', backgroundColor: color,
+            }}
+          ></span>
+          <span className="text-xs">
+            {label} <span className="opacity-60">{detail}</span>
+          </span>
+        </motion.div>
+      ))}
+
+      <motion.div variants={itemVariants} className="legend-item flex items-center gap-2 mt-2">
+        <span
+          style={{
+            display: 'inline-block', width: '12px', height: '12px',
+            borderRadius: '2px', backgroundColor: '#94a3b8',
+          }}
+        ></span>
+        <span className="text-xs">
+          Uncertain <span className="opacity-60">model cannot call (24% of grid)</span>
+        </span>
       </motion.div>
 
       <hr className="my-2" />

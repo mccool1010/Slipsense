@@ -1,15 +1,34 @@
 """
 data_preparation.py
-Merge all available data sources to create an expanded dataset for landslide prediction.
-Outputs: merged_landslide_data.csv (750+ samples)
 
-Data Sources:
-1. landslide - Sheet1 (1).csv - Primary training data (250 samples)
-2. kerala_landslide_data.csv - Kerala district data with slope/rainfall (501 samples)
-3. Global_Landslide_Catalog - Filter India events (11K total, ~100+ India events)
+*** RETIRED - DOES NOT RUN. Superseded by build_real_dataset.py. ***
+
+This produced `merged_landslide_data.csv`, the 800-row dataset behind the retracted
+F1 0.832 / ROC-AUC 0.958 figures. It is kept only as a record of how those numbers
+arose. Running it would overwrite real data with fabricated rows, so it refuses.
+
+Two defects, both fatal:
+
+1. Label leakage. 550 of 800 rows were invented with `np.random.uniform`, and in
+   load_kerala_data() two features were generated *conditional on the label*:
+       elevation  = where(landslide==1, uniform(500,1400), uniform(50,800))
+       dist_river = where(landslide==1, uniform(200,1000), uniform(1500,2600))
+   The classes then did not overlap at all - `dist_river < 1250` separated every
+   synthetic row perfectly, and a RandomForest scored AUC 1.000 on that subset. The
+   models were reading the answer off label-derived features, not learning terrain.
+
+2. Broken feature extraction. extract_features_from_rasters() calls
+   `rowcol(src.transform, lon, lat)` with geographic coordinates against rasters in
+   EPSG:32643 (UTM 43N, metres). Those coordinates land far outside the grid and
+   return NaN for every UTM layer - which is why the Global Landslide Catalog branch
+   silently found no valid samples and fell through to fabricating 50 more positives.
+
+Use build_real_dataset.py, which samples the real inventory against the real rasters
+in each raster's own CRS.
 """
 
 import os
+import sys
 import numpy as np
 import pandas as pd
 import rasterio
@@ -252,6 +271,15 @@ def balance_dataset(df, target_ratio=0.5):
 
 
 def main():
+    sys.exit(
+        "data_preparation.py is retired and will not run.\n"
+        "It fabricates 550 of its 800 rows and generates 'elevation' and 'dist_river'\n"
+        "from the label, which leaks the answer into the features (dist_river < 1250\n"
+        "separates every synthetic row perfectly). It produced the retracted\n"
+        "F1 0.832 / ROC-AUC 0.958 results.\n\n"
+        "Use: python ml_models/build_real_dataset.py"
+    )
+
     print("=" * 60)
     print("Data Preparation for Enhanced Landslide Prediction")
     print("=" * 60)

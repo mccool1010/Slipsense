@@ -1,0 +1,88 @@
+[
+  {
+    "tile": "cop30_N08_E076",
+    "n_events": 5,
+    "map_median": 0.00430647749453783,
+    "extrapolated": true,
+    "event_median": 0.008462632074952126,
+    "event_percentile": 63.882844714491014
+  },
+  {
+    "tile": "cop30_N08_E077",
+    "n_events": 4,
+    "map_median": 0.018793156370520592,
+    "extrapolated": true,
+    "event_median": 0.007833340903744102,
+    "event_percentile": 26.74463926037064
+  },
+  {
+    "tile": "cop30_N09_E076",
+    "n_events": 21,
+    "map_median": 0.009590648114681244,
+    "extrapolated": true,
+    "event_median": 0.12434906512498856,
+    "event_percentile": 78.84949452539936
+  },
+  {
+    "tile": "cop30_N09_E077",
+    "n_events": 6,
+    "map_median": 0.05254620686173439,
+    "extrapolated": true,
+    "event_median": 0.12896644324064255,
+    "event_percentile": 72.77045176764983
+  },
+  {
+    "tile": "cop30_N10_E075",
+    "n_events": 0,
+    "map_median": 0.003904679324477911,
+    "extrapolated": true
+  },
+  {
+    "tile": "cop30_N10_E076",
+    "n_events": 14,
+    "map_median": 0.02610672079026699,
+    "extrapolated": true,
+    "event_median": 0.07347345165908337,
+    "event_percentile": 57.85832475533689
+  },
+  {
+    "tile": "cop30_N10_E077",
+    "n_events": 3,
+    "map_median": 0.04387858137488365,
+    "extrapolated": true,
+    "event_median": 0.1836061328649521,
+    "event_percentile": 78.4479537993321
+  },
+  {
+    "tile": "cop30_N11_E075",
+    "n_events": 5,
+    "map_median": 0.004176073241978884,
+    "extrapolated": true,
+    "event_median": 0.010021781548857689,
+    "event_percentile": 71.08899892081678
+  },
+  {
+    "tile": "cop30_N11_E076",
+    "n_events": 27,
+    "map_median": 0.054663730785250664,
+    "extrapolated": true,
+    "event_median": 0.06806354969739914,
+    "event_percentile": 58.48953047520934
+  },
+  {
+    "tile": "cop30_N12_E074",
+    "n_events": 12,
+    "map_median": 0.004176073241978884,
+    "extrapolated": true,
+    "event_median": 0.02078303787857294,
+    "event_percentile": 93.67527777640473
+  },
+  {
+    "tile": "cop30_N12_E075",
+    "n_events": 9,
+    "map_median": 0.04321293346583843,
+    "extrapolated": false,
+    "event_median": 0.05227883160114288,
+    "event_percentile": 53.82470854970626
+  }
+]

@@ -61,3 +61,27 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# ---------------------------------------------------------------------------
+# Generated geospatial artifacts (rebuildable from the scripts in ml_models/).
+# These total ~7 GB and must not enter git history. Rebuild with:
+#   python ml_models/build_terrain_stack.py
+#   python ml_models/build_soil_layer.py
+#   python ml_models/build_landcover_layer.py
+#   python ml_models/generate_susceptibility_v2.py
+#   python ml_models/generate_runout_v2.py
+backend/rasters/v2/
+backend/rasters/tiles/
+
+# Downloaded source data (re-fetchable; see the download logic in each builder).
+data/dem/
+data/worldcover/
+data/soilgrids/
+
+# API response caches.
+data/osm_cache.json
+data/osm_roads_cache.json
+data/rainfall_cache.json
+
+# Leaked-credential file. Revoke the token; do not commit it.
+ghp_*.txt

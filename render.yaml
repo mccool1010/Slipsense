@@ -1,0 +1,42 @@
+# Render deployment for the SlipSense backend.
+#
+# Fly.io was the first choice - a Singapore region is closer to Kerala and its machines
+# stay warm - but Fly now requires a payment method before it will place any machine at
+# all ("requested machine count exceeds organization limit"). Render's free instance
+# type still needs no card, and it builds the same Dockerfile straight from GitHub.
+#
+# The trade is that a free Render instance sleeps after ~15 minutes idle and takes
+# 30-60 seconds to wake. The first map load after a quiet period will show empty tiles
+# until the container is up, which on this project looks exactly like the bug we spent
+# a long time chasing. The frontend cannot tell the difference, so if this deployment is
+# going in front of anyone, wake it first by opening /health and waiting for a response.
+#
+# fly.toml is kept alongside this: if a card is ever added, `fly deploy --remote-only`
+# gives a warm instance nearer to Kerala with no further changes.
+
+services:
+  - type: web
+    name: slipsense-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    # The Dockerfile copies deploy/rasters and Kerala_District_Boundary.geojson from the
+    # repository root, so the build context has to be the root rather than backend/.
+    dockerContext: .
+    plan: free
+    region: singapore
+    branch: rebuild/honest-pipeline
+    healthCheckPath: /health
+    envVars:
+      - key: SLIPSENSE_RASTER_DIR
+        value: /app/deploy/rasters
+      # Render injects PORT and expects the service to bind it; the Dockerfile's CMD
+      # already reads $PORT.
+      - key: PORT
+        value: "8000"
+      # Alerting can send real SMS. An endpoint reachable from the open internet that
+      # can spend money should not be armed by default.
+      - key: DRY_RUN
+        value: "true"
+      # Set in the Render dashboard, not here - this file is committed.
+      - key: OPENWEATHER_API_KEY
+        sync: false

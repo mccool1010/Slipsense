@@ -21,8 +21,17 @@ In 2018 alone, Idukki district recorded **143 landslides** — more than any oth
 
 **The common factor in every event: extreme rainfall on vulnerable terrain.**
 
+> **Coverage correction.** The trained ML/DL susceptibility model covers a single
+> 1°×1° tile (75–76°E, 12–13°N), which intersects only **two** Kerala districts,
+> Kasaragod and Kannur, plus the adjacent Karnataka Western Ghats. 215 of the 279
+> inventory landslides fall outside Kerala entirely. The *state-wide* layer shown in the
+> app is the GSI historical susceptibility product (13 districts), which is published
+> data, not a model output. Claims of model coverage "across all 14 districts" below are
+> not supported by the data and are being corrected.
+
 SlipSense is a **computational early warning system** that:
-1. Analyzes terrain data (slope, elevation, drainage, wetness) across all 14 Kerala districts
+1. Analyzes terrain data (slope, elevation, drainage, wetness) across the modelled tile,
+   and displays GSI historical susceptibility for 13 Kerala districts
 2. Predicts **where** landslides are most likely to start (susceptibility mapping)
 3. Predicts **where debris will flow** once a landslide occurs (runout simulation)
 4. Sends **SMS alerts** when susceptibility + real-time rainfall exceed danger thresholds
