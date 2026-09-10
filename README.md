@@ -4,14 +4,14 @@
 
 ### Landslide susceptibility, runout and rainfall triggering for the Western Ghats
 
-[![Live demo](https://img.shields.io/badge/live_demo-slipsense--sage.vercel.app-38bdf8?style=for-the-badge)](https://slipsense-sage.vercel.app/)
+[![Live demo](https://img.shields.io/badge/live_demo-slipsense--ebon.vercel.app-38bdf8?style=for-the-badge)](https://slipsense-ebon.vercel.app/)
 [![Model card](https://img.shields.io/badge/model_card-limitations_%26_retractions-f59e0b?style=for-the-badge)](docs/MODEL_CARD.md)
 [![Tests](https://img.shields.io/badge/tests-21_passing-22c55e?style=for-the-badge)](tests/test_pipeline.py)
 
-**[→ Open the live map](https://slipsense-sage.vercel.app/)**
+**[→ Open the live map](https://slipsense-ebon.vercel.app/)**
 
 *The API sleeps when idle. If overlays are missing on first load, open
-[/health](https://slipsense-api.onrender.com/health), wait for a response, then reload.*
+[/health](https://slipsense-api-7un2.onrender.com/health), wait for a response, then reload.*
 
 </div>
 
