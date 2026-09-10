@@ -11,6 +11,7 @@ import {
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { API_BASE, BACKEND_UNREACHABLE } from "../api";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ================================
@@ -86,16 +87,13 @@ function ZoomWatcher({ onZoom }) {
 ================================ */
 // Configurable so a deployed build can point at a real host; falls back to localhost
 // for development. Module scope, so effects do not need it as a dependency.
-const TILE_SERVER = import.meta.env.VITE_TILE_SERVER || "http://localhost:8000";
+const TILE_SERVER = API_BASE;
 
 // A deployed build that fell back to localhost cannot reach any backend, and the
 // symptom - base map fine, every overlay empty - is indistinguishable from the layers
 // being broken. That ambiguity has cost enough time on this project already, so say it
 // plainly instead of letting it look like a model problem.
-const MISCONFIGURED_BACKEND =
-  typeof window !== "undefined" &&
-  !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname) &&
-  /localhost|127\.0\.0\.1/.test(TILE_SERVER);
+const MISCONFIGURED_BACKEND = BACKEND_UNREACHABLE;
 
 // Velocity ramp for runout corridors: blue slow, red fast. Matches the colouring used
 // in ml_models/runout_figure.py so the app and the figures tell the same story.

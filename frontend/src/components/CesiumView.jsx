@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { API_BASE, BACKEND_UNREACHABLE } from "../api";
 
 // Configure Cesium assets path
 // The Ion token was previously a string literal in this file, which put a live
@@ -32,18 +33,14 @@ if (typeof window !== 'undefined') {
       : '/node_modules/cesium/Build/Cesium/';
 }
 
-const TILE_SERVER = import.meta.env.VITE_TILE_SERVER || "http://localhost:8000";
+const TILE_SERVER = API_BASE;
 
-// A deployed build with no VITE_TILE_SERVER points at localhost, which does not exist
-// for a visitor. Requesting tiles from it returns something that is not an image, and
-// Cesium treats a failed imagery decode as fatal - "InvalidStateError: The image could
-// not be decoded", then "Rendering has stopped", and the whole globe goes black. The
-// terrain is fine; one unreachable overlay takes the scene down with it. So when the
-// backend is unreachable, do not add the overlay at all.
-const BACKEND_UNREACHABLE =
-  typeof window !== "undefined" &&
-  !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname) &&
-  /localhost|127\.0\.0\.1/.test(TILE_SERVER);
+// BACKEND_UNREACHABLE is imported from ../api. When a deployed build has no
+// VITE_TILE_SERVER it points at localhost, which does not exist for a visitor:
+// requesting tiles returns something that is not an image, and Cesium treats a failed
+// imagery decode as fatal - "InvalidStateError: The image could not be decoded", then
+// "Rendering has stopped", and the globe goes black. The terrain is fine; one
+// unreachable overlay takes the scene with it. So the overlay is simply not added.
 
 // Velocity ramp, matching the runout figure: blue slow through red fast. Colouring by
 // speed rather than a single hue is what makes the corridors informative - a long slow

@@ -7,6 +7,7 @@ import MapView from "./components/MapView";
 import LayerControl from "./components/LayerControl";
 import Legend from "./components/Legend";
 import CesiumView from "./components/CesiumView";
+import { api } from "./api";
 import Navbar from "./components/Navbar";
 import { ToastProvider, useToast } from "./components/Toast";
 import Particles from "./components/Particles";
@@ -153,7 +154,7 @@ function AppContent() {
     };
 
     try {
-      const res = await fetch(`http://localhost:8000/pixel-info?lat=${lat}&lon=${lon}`);
+      const res = await fetch(api(`/pixel-info?lat=${lat}&lon=${lon}`));
       if (res.ok) {
         const data = await res.json();
         normalized = {
@@ -180,7 +181,7 @@ function AppContent() {
 
     // Always fetch weather data for the clicked coordinates (global coverage)
     try {
-      const weatherRes = await fetch(`http://localhost:8000/weather?lat=${lat}&lon=${lon}`);
+      const weatherRes = await fetch(api(`/weather?lat=${lat}&lon=${lon}`));
       if (weatherRes.ok) {
         const weatherDataFromAPI = await weatherRes.json();
         setWeatherData({
